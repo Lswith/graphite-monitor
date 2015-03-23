@@ -3,19 +3,28 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/scorredoira/email"
 	"io"
 	"log"
 	"net/http"
+	"net/smtp"
 	"net/url"
 	"os"
+	"time"
 )
 
 type Config struct {
-	Endpoint  string
-	Interval  string
-	Target    string
-	Threshold float64
-	Rule      string
+	Endpoint      string
+	Interval      string
+	Target        string
+	Threshold     float64
+	Frequency     string
+	Rule          string
+	EmailServer   string
+	EmailTo       string
+	EmailFrom     string
+	EmailPassword string
+	EmailPort     string
 }
 
 type Data struct {
@@ -23,74 +32,129 @@ type Data struct {
 	DataPoints [][2]float64
 }
 
-func main() {
-	config := readConfig()
-	data := getData(config)
-	monitorData(data, config.Rule, config.Threshold)
+type Alarm struct {
+	Target    string
+	Rule      string
+	Threshold float64
 }
 
-func monitorData(d []Data, rule string, thres float64) {
+func main() {
+
+	config := readConfig()
+	auth := smtp.PlainAuth("", config.EmailFrom, config.EmailPassword, config.EmailServer)
+	d, err := time.ParseDuration(config.Frequency)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for {
+		data := getData(config)
+		alarms := monitorData(data, config.Rule, config.Threshold)
+		for i := range alarms {
+			fmt.Printf("Target: %s has not met the threshold %f\n", alarms[i].Target, alarms[i].Threshold)
+			name := saveGraph(alarms[i], config)
+			sendEmail(config.EmailServer+":"+config.EmailPort, auth, alarms[i].Target, config.EmailTo, name)
+			os.Remove(name)
+		}
+		time.Sleep(d)
+	}
+}
+
+func sendEmail(addr string, auth smtp.Auth, subject string, to string, filename string) {
+	m := email.NewMessage(subject, "")
+	m.To = []string{to}
+	err := m.Attach(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = email.Send(addr, auth, m)
+}
+
+func saveGraph(alarm Alarm, config Config) string {
+	var graphurl = config.Endpoint + "/render?" + "target=" + alarm.Target + "&from=" + config.Interval
+	out, err := os.Create(time.Now().Format("01-02-2015T15.04.05") + ".png")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer out.Close()
+	resp, err := http.Get(graphurl)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	io.Copy(out, resp.Body)
+	return out.Name()
+}
+
+func monitorData(d []Data, rule string, thres float64) []Alarm {
+	alarms := make([]Alarm, 0)
 	for i := range d {
 		data := d[i]
-
+		alarm := Alarm{}
 		switch rule {
 		case "==":
 			for j := range data.DataPoints {
 				if data.DataPoints[j][0] == thres {
-					fmt.Printf("target : %s is ", data.Target)
-					fmt.Printf("equal to the threshold of %f\n", thres)
+					alarm.Threshold = thres
+					alarm.Target = data.Target
+					alarm.Rule = rule
+					alarms = append(alarms, alarm)
 					break
 				}
 			}
 		case "!=":
 			for j := range data.DataPoints {
 				if data.DataPoints[j][0] != thres {
-					fmt.Printf("target : %s is ", data.Target)
-					fmt.Printf("not equal to the threshold of %f\n", thres)
+					alarm.Threshold = thres
+					alarm.Target = data.Target
+					alarm.Rule = rule
+					alarms = append(alarms, alarm)
 					break
 				}
 			}
 		case "<":
 			for j := range data.DataPoints {
 				if data.DataPoints[j][0] < thres {
-					fmt.Printf("target : %s is ", data.Target)
-					fmt.Printf("less than the threshold of %f\n", thres)
+					alarm.Threshold = thres
+					alarm.Target = data.Target
+					alarm.Rule = rule
+					alarms = append(alarms, alarm)
 					break
 				}
 			}
 		case "<=":
 			for j := range data.DataPoints {
 				if data.DataPoints[j][0] <= thres {
-					fmt.Printf("target : %s is ", data.Target)
-					fmt.Printf("less than or equal to the threshold of %f\n", thres)
+					alarm.Threshold = thres
+					alarm.Target = data.Target
+					alarm.Rule = rule
+					alarms = append(alarms, alarm)
 					break
 				}
 			}
 		case ">":
 			for j := range data.DataPoints {
 				if data.DataPoints[j][0] > thres {
-					fmt.Printf("target : %s is ", data.Target)
-					fmt.Printf("greater than the threshold of %f\n", thres)
+					alarm.Threshold = thres
+					alarm.Target = data.Target
+					alarm.Rule = rule
+					alarms = append(alarms, alarm)
 					break
 				}
 			}
 		case ">=":
 			for j := range data.DataPoints {
 				if data.DataPoints[j][0] >= thres {
-					fmt.Printf("target : %s is ", data.Target)
-					fmt.Printf("greater than or equal to the threshold of %f\n", thres)
+					alarm.Threshold = thres
+					alarm.Target = data.Target
+					alarm.Rule = rule
+					alarms = append(alarms, alarm)
 					break
 				}
 			}
 		}
 	}
 
-	// 	==    equal
-	// !=    not equal
-	// <     less
-	// <=    less or equal
-	// >     greater
-	// >=    greater or equal
+	return alarms
 }
 
 func readConfig() Config {
