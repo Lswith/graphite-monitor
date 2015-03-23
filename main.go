@@ -25,6 +25,7 @@ type Config struct {
 	EmailFrom     string
 	EmailPassword string
 	EmailPort     string
+	EmailSubject  string
 }
 
 type Data struct {
@@ -39,7 +40,6 @@ type Alarm struct {
 }
 
 func main() {
-
 	config := readConfig()
 	auth := smtp.PlainAuth("", config.EmailFrom, config.EmailPassword, config.EmailServer)
 	d, err := time.ParseDuration(config.Frequency)
@@ -47,38 +47,55 @@ func main() {
 		log.Fatal(err)
 	}
 	for {
+		defer func() {
+			if r := recover(); r != nil {
+				sendEmail(config.EmailServer+":"+config.EmailPort, auth, "graphite-monitor encountered an error: "+err, config.EmailTo)
+			}
+		}()
 		data := getData(config)
 		alarms := monitorData(data, config.Rule, config.Threshold)
 		for i := range alarms {
 			fmt.Printf("Target: %s has not met the threshold %f\n", alarms[i].Target, alarms[i].Threshold)
 			name := saveGraph(alarms[i], config)
-			sendEmail(config.EmailServer+":"+config.EmailPort, auth, alarms[i].Target, config.EmailTo, name)
+			sendEmailwithAttachment(config.EmailServer+":"+config.EmailPort, auth, config.EmailSubject+" "+alarms[i].Target, config.EmailTo, name)
 			os.Remove(name)
 		}
 		time.Sleep(d)
 	}
 }
 
-func sendEmail(addr string, auth smtp.Auth, subject string, to string, filename string) {
+func sendEmailwithAttachment(addr string, auth smtp.Auth, subject string, to string, filename string) {
 	m := email.NewMessage(subject, "")
 	m.To = []string{to}
 	err := m.Attach(filename)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 	err = email.Send(addr, auth, m)
+	if err != nil {
+		log.Panic(err)
+	}
+}
+
+func sendEmail(addr string, auth smtp.Auth, subject string, to string) {
+	m := email.NewMessage(subject, "")
+	m.To = []string{to}
+	err = email.Send(addr, auth, m)
+	if err != nil {
+		log.Panic(err)
+	}
 }
 
 func saveGraph(alarm Alarm, config Config) string {
 	var graphurl = config.Endpoint + "/render?" + "target=" + alarm.Target + "&from=" + config.Interval
 	out, err := os.Create(time.Now().Format("01-02-2015T15.04.05") + ".png")
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 	defer out.Close()
 	resp, err := http.Get(graphurl)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 	defer resp.Body.Close()
 	io.Copy(out, resp.Body)
@@ -151,6 +168,8 @@ func monitorData(d []Data, rule string, thres float64) []Alarm {
 					break
 				}
 			}
+		default:
+			log.Fatal("the rule cannot be parsed!")
 		}
 	}
 
@@ -163,7 +182,7 @@ func readConfig() Config {
 	configuration := Config{}
 	err := decoder.Decode(&configuration)
 	if err != nil {
-		fmt.Println("error:", err)
+		log.Fatal(err)
 	}
 	return configuration
 }
@@ -176,8 +195,9 @@ func getData(config Config) []Data {
 	actualurl := ep.String() + "/render" + "?" + values.Encode() + "&format=json"
 
 	resp, err := http.Get(actualurl)
+	defer resp.Body.Close()
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 	dec := json.NewDecoder(resp.Body)
 	var m []Data
@@ -185,7 +205,7 @@ func getData(config Config) []Data {
 		if err := dec.Decode(&m); err == io.EOF {
 			break
 		} else if err != nil {
-			log.Fatal(err)
+			log.Panic(err)
 		}
 	}
 	return m
