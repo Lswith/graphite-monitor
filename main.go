@@ -18,6 +18,7 @@ type Config struct {
 	Interval      string
 	Target        string
 	Threshold     float64
+	Frequency     string
 	Rule          string
 	EmailServer   string
 	EmailTo       string
@@ -41,12 +42,20 @@ func main() {
 
 	config := readConfig()
 	auth := smtp.PlainAuth("", config.EmailFrom, config.EmailPassword, config.EmailServer)
-	data := getData(config)
-	alarms := monitorData(data, config.Rule, config.Threshold)
-	for i := range alarms {
-		fmt.Printf("Target: %s has not met the threshold %f\n", alarms[i].Target, alarms[i].Threshold)
-		name := saveGraph(alarms[i], config)
-		sendEmail(config.EmailServer+":"+config.EmailPort, auth, alarms[i].Target, config.EmailTo, name)
+	d, err := time.ParseDuration(config.Frequency)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for {
+		data := getData(config)
+		alarms := monitorData(data, config.Rule, config.Threshold)
+		for i := range alarms {
+			fmt.Printf("Target: %s has not met the threshold %f\n", alarms[i].Target, alarms[i].Threshold)
+			name := saveGraph(alarms[i], config)
+			sendEmail(config.EmailServer+":"+config.EmailPort, auth, alarms[i].Target, config.EmailTo, name)
+			os.Remove(name)
+		}
+		time.Sleep(d)
 	}
 }
 
@@ -62,7 +71,7 @@ func sendEmail(addr string, auth smtp.Auth, subject string, to string, filename 
 
 func saveGraph(alarm Alarm, config Config) string {
 	var graphurl = config.Endpoint + "/render?" + "target=" + alarm.Target + "&from=" + config.Interval
-	out, err := os.Create(alarm.Target + time.Now().Format("01-02-2015T15.04.05") + ".png")
+	out, err := os.Create(time.Now().Format("01-02-2015T15.04.05") + ".png")
 	if err != nil {
 		log.Fatal(err)
 	}
