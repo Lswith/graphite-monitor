@@ -23,6 +23,7 @@ type Config struct {
 	EmailServer   string
 	EmailTo       string
 	EmailFrom     string
+	EmailUser     string
 	EmailPassword string
 	EmailPort     string
 	EmailSubject  string
@@ -41,7 +42,7 @@ type Alarm struct {
 
 func main() {
 	config := readConfig()
-	auth := smtp.PlainAuth("", config.EmailFrom, config.EmailPassword, config.EmailServer)
+	auth := smtp.PlainAuth("", config.EmailUser, config.EmailPassword, config.EmailServer)
 	d, err := time.ParseDuration(config.Frequency)
 	if err != nil {
 		log.Fatal(err)
@@ -49,7 +50,7 @@ func main() {
 	for {
 		defer func() {
 			if r := recover(); r != nil {
-				sendEmail(config.EmailServer+":"+config.EmailPort, auth, "graphite-monitor encountered an error: "+err, config.EmailTo)
+				sendEmail(config.EmailServer+":"+config.EmailPort, auth, "graphite-monitor encountered an error: "+err.Error(), config.EmailTo, config.EmailFrom)
 			}
 		}()
 		data := getData(config)
@@ -57,16 +58,17 @@ func main() {
 		for i := range alarms {
 			fmt.Printf("Target: %s has not met the threshold %f\n", alarms[i].Target, alarms[i].Threshold)
 			name := saveGraph(alarms[i], config)
-			sendEmailwithAttachment(config.EmailServer+":"+config.EmailPort, auth, config.EmailSubject+" "+alarms[i].Target, config.EmailTo, name)
+			sendEmailwithAttachment(config.EmailServer+":"+config.EmailPort, auth, config.EmailSubject+" "+alarms[i].Target, config.EmailTo, config.EmailFrom, name)
 			os.Remove(name)
 		}
 		time.Sleep(d)
 	}
 }
 
-func sendEmailwithAttachment(addr string, auth smtp.Auth, subject string, to string, filename string) {
+func sendEmailwithAttachment(addr string, auth smtp.Auth, subject string, to string, from string, filename string) {
 	m := email.NewMessage(subject, "")
 	m.To = []string{to}
+	m.From = from
 	err := m.Attach(filename)
 	if err != nil {
 		log.Panic(err)
@@ -77,10 +79,11 @@ func sendEmailwithAttachment(addr string, auth smtp.Auth, subject string, to str
 	}
 }
 
-func sendEmail(addr string, auth smtp.Auth, subject string, to string) {
+func sendEmail(addr string, auth smtp.Auth, subject string, to string, from string) {
 	m := email.NewMessage(subject, "")
 	m.To = []string{to}
-	err = email.Send(addr, auth, m)
+	m.From = from
+	err := email.Send(addr, auth, m)
 	if err != nil {
 		log.Panic(err)
 	}
