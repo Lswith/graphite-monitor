@@ -25,6 +25,7 @@ type Config struct {
 	EmailFrom     string
 	EmailPassword string
 	EmailPort     string
+	EmailSubject  string
 }
 
 type Data struct {
@@ -52,7 +53,7 @@ func main() {
 		for i := range alarms {
 			fmt.Printf("Target: %s has not met the threshold %f\n", alarms[i].Target, alarms[i].Threshold)
 			name := saveGraph(alarms[i], config)
-			sendEmail(config.EmailServer+":"+config.EmailPort, auth, alarms[i].Target, config.EmailTo, name)
+			sendEmail(config.EmailServer+":"+config.EmailPort, auth, config.EmailSubject+" "+alarms[i].Target, config.EmailTo, name)
 			os.Remove(name)
 		}
 		time.Sleep(d)
