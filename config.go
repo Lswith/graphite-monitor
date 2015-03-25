@@ -22,12 +22,12 @@ type Config struct {
 	EmailSubject  string
 }
 
-func readConfig(r io.Reader) Config {
+func ReadConfig(r io.Reader) Config {
 	decoder := json.NewDecoder(r)
 	configuration := Config{}
 	err := decoder.Decode(&configuration)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 	return configuration
 }

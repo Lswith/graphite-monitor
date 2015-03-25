@@ -10,7 +10,7 @@ type Alarm struct {
 	Threshold float64
 }
 
-func monitorData(d []Data, rule string, thres float64) []Alarm {
+func MonitorData(d []Data, rule string, thres float64) []Alarm {
 	alarms := make([]Alarm, 0)
 	for i := range d {
 		data := d[i]
@@ -77,7 +77,7 @@ func monitorData(d []Data, rule string, thres float64) []Alarm {
 				}
 			}
 		default:
-			log.Fatal("the rule cannot be parsed!")
+			log.Panic("the rule cannot be parsed!")
 		}
 	}
 

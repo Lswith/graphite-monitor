@@ -29,7 +29,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	config := readConfig(file)
+	config := ReadConfig(file)
 	auth := smtp.PlainAuth("", config.EmailUser, config.EmailPassword, config.EmailServer)
 	d, err := time.ParseDuration(config.Frequency)
 	if err != nil {
@@ -38,17 +38,17 @@ func main() {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("graphite-monitor encounted an error: ", r)
-			sendEmail(config.EmailServer+":"+config.EmailPort, auth, "graphite-monitor encountered an error: "+err.Error(), config.EmailTo, config.EmailFrom)
+			SendEmail(config.EmailServer+":"+config.EmailPort, auth, "graphite-monitor encountered an error: "+err.Error(), config.EmailTo, config.EmailFrom)
 		}
 	}()
 	for {
 
 		data := getData(config)
-		alarms := monitorData(data, config.Rule, config.Threshold)
+		alarms := MonitorData(data, config.Rule, config.Threshold)
 		for i := range alarms {
 			fmt.Printf("Target: %s has not met the threshold %f\n", alarms[i].Target, alarms[i].Threshold)
 			name := saveGraph(alarms[i], config)
-			sendEmailwithAttachment(config.EmailServer+":"+config.EmailPort, auth, config.EmailSubject+" "+alarms[i].Target, config.EmailTo, config.EmailFrom, name)
+			SendEmailwithAttachment(config.EmailServer+":"+config.EmailPort, auth, config.EmailSubject+" "+alarms[i].Target, config.EmailTo, config.EmailFrom, name)
 			os.Remove(name)
 		}
 		time.Sleep(d)
