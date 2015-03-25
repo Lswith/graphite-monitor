@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/scorredoira/email"
 	"io"
 	"log"
 	"net/http"
@@ -13,31 +12,9 @@ import (
 	"time"
 )
 
-type Config struct {
-	Endpoint      string
-	Interval      string
-	Target        string
-	Threshold     float64
-	Frequency     string
-	Rule          string
-	EmailServer   string
-	EmailTo       string
-	EmailFrom     string
-	EmailUser     string
-	EmailPassword string
-	EmailPort     string
-	EmailSubject  string
-}
-
 type Data struct {
 	Target     string
 	DataPoints [][2]float64
-}
-
-type Alarm struct {
-	Target    string
-	Rule      string
-	Threshold float64
 }
 
 func main() {
@@ -47,8 +24,12 @@ func main() {
 	}
 	defer out.Close()
 	log.SetOutput(out)
-
-	config := readConfig()
+	file, err := os.Open("conf.json")
+	defer file.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+	config := readConfig(file)
 	auth := smtp.PlainAuth("", config.EmailUser, config.EmailPassword, config.EmailServer)
 	d, err := time.ParseDuration(config.Frequency)
 	if err != nil {
@@ -74,30 +55,6 @@ func main() {
 	}
 }
 
-func sendEmailwithAttachment(addr string, auth smtp.Auth, subject string, to string, from string, filename string) {
-	m := email.NewMessage(subject, "")
-	m.To = []string{to}
-	m.From = from
-	err := m.Attach(filename)
-	if err != nil {
-		log.Panic(err)
-	}
-	err = email.Send(addr, auth, m)
-	if err != nil {
-		log.Panic(err)
-	}
-}
-
-func sendEmail(addr string, auth smtp.Auth, subject string, to string, from string) {
-	m := email.NewMessage(subject, "")
-	m.To = []string{to}
-	m.From = from
-	err := email.Send(addr, auth, m)
-	if err != nil {
-		log.Panic(err)
-	}
-}
-
 func saveGraph(alarm Alarm, config Config) string {
 	var graphurl = config.Endpoint + "/render?" + "target=" + alarm.Target + "&from=" + config.Interval
 	out, err := os.Create(time.Now().Format("01-02-2015T15.04.05") + ".png")
@@ -112,91 +69,6 @@ func saveGraph(alarm Alarm, config Config) string {
 	defer resp.Body.Close()
 	io.Copy(out, resp.Body)
 	return out.Name()
-}
-
-func monitorData(d []Data, rule string, thres float64) []Alarm {
-	alarms := make([]Alarm, 0)
-	for i := range d {
-		data := d[i]
-		alarm := Alarm{}
-		switch rule {
-		case "==":
-			for j := range data.DataPoints {
-				if data.DataPoints[j][0] == thres {
-					alarm.Threshold = thres
-					alarm.Target = data.Target
-					alarm.Rule = rule
-					alarms = append(alarms, alarm)
-					break
-				}
-			}
-		case "!=":
-			for j := range data.DataPoints {
-				if data.DataPoints[j][0] != thres {
-					alarm.Threshold = thres
-					alarm.Target = data.Target
-					alarm.Rule = rule
-					alarms = append(alarms, alarm)
-					break
-				}
-			}
-		case "<":
-			for j := range data.DataPoints {
-				if data.DataPoints[j][0] < thres {
-					alarm.Threshold = thres
-					alarm.Target = data.Target
-					alarm.Rule = rule
-					alarms = append(alarms, alarm)
-					break
-				}
-			}
-		case "<=":
-			for j := range data.DataPoints {
-				if data.DataPoints[j][0] <= thres {
-					alarm.Threshold = thres
-					alarm.Target = data.Target
-					alarm.Rule = rule
-					alarms = append(alarms, alarm)
-					break
-				}
-			}
-		case ">":
-			for j := range data.DataPoints {
-				if data.DataPoints[j][0] > thres {
-					alarm.Threshold = thres
-					alarm.Target = data.Target
-					alarm.Rule = rule
-					alarms = append(alarms, alarm)
-					break
-				}
-			}
-		case ">=":
-			for j := range data.DataPoints {
-				if data.DataPoints[j][0] >= thres {
-					alarm.Threshold = thres
-					alarm.Target = data.Target
-					alarm.Rule = rule
-					alarms = append(alarms, alarm)
-					break
-				}
-			}
-		default:
-			log.Fatal("the rule cannot be parsed!")
-		}
-	}
-
-	return alarms
-}
-
-func readConfig() Config {
-	file, _ := os.Open("conf.json")
-	decoder := json.NewDecoder(file)
-	configuration := Config{}
-	err := decoder.Decode(&configuration)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return configuration
 }
 
 func getData(config Config) []Data {
