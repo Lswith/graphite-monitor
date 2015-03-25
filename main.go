@@ -56,6 +56,7 @@ func main() {
 	}
 	defer func() {
 		if r := recover(); r != nil {
+			log.Println("graphite-monitor encounted an error: ", r)
 			sendEmail(config.EmailServer+":"+config.EmailPort, auth, "graphite-monitor encountered an error: "+err.Error(), config.EmailTo, config.EmailFrom)
 		}
 	}()
