@@ -41,18 +41,26 @@ type Alarm struct {
 }
 
 func main() {
+	out, err := os.Create("graphmon.log")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer out.Close()
+	log.SetOutput(out)
+
 	config := readConfig()
 	auth := smtp.PlainAuth("", config.EmailUser, config.EmailPassword, config.EmailServer)
 	d, err := time.ParseDuration(config.Frequency)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			sendEmail(config.EmailServer+":"+config.EmailPort, auth, "graphite-monitor encountered an error: "+err.Error(), config.EmailTo, config.EmailFrom)
+		}
+	}()
 	for {
-		defer func() {
-			if r := recover(); r != nil {
-				sendEmail(config.EmailServer+":"+config.EmailPort, auth, "graphite-monitor encountered an error: "+err.Error(), config.EmailTo, config.EmailFrom)
-			}
-		}()
+
 		data := getData(config)
 		alarms := monitorData(data, config.Rule, config.Threshold)
 		for i := range alarms {
