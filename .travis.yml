@@ -3,6 +3,6 @@ deploy:
   provider: releases
   api_key:
     secure: fjCJc5YtUDt5MYj8LX+eT7eFmxbPMQZLwch3hfo0U7M4IGISPdn94Vksn7wUjgDoZ/7zr4bsrFFgi7K7JDBrWS7w4uXeI88nVaDuC3p4r8f6tUqaBNnpvEfH8ZhWKb4vcKVWLdygR9EQYxJDaeE3kQk3hA7GNNMwAC2IaJkzfRw=
-  file: graphite-monitor
+  file: github.com/lswith/graphite-monitor
   on:
     repo: Lswith/graphite-monitor
