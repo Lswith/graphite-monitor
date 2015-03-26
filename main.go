@@ -45,7 +45,6 @@ func Run(config Config) {
 	d, err := time.ParseDuration(config.Frequency)
 	if err != nil {
 		log.Println(err)
-	} else {
 		d, err = time.ParseDuration("5m")
 		if err != nil {
 			log.Fatal(err)
