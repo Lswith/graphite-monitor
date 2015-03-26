@@ -1,5 +1,4 @@
 language: go
-before_deploy: "git fetch --tags"
 deploy:
   provider: releases
   api_key:
