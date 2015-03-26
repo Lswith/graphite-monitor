@@ -57,6 +57,7 @@ func AlarmByEmail(alarm Alarm, config Config, filename string, emailsend SendEma
 	if err != nil {
 		return err
 	}
+	defer os.Remove(out.Name())
 	defer out.Close()
 	var graphurl = config.Endpoint + "/render?" + "target=" + alarm.Target + "&from=" + config.Interval
 	err = save(graphurl, &client, out)
@@ -67,7 +68,6 @@ func AlarmByEmail(alarm Alarm, config Config, filename string, emailsend SendEma
 	if err != nil {
 		return err
 	}
-	err = os.Remove(out.Name())
 	return err
 }
 

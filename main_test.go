@@ -14,11 +14,7 @@ func TestSetup(t *testing.T) {
 	defer file.Close()
 	defer os.Remove(file.Name())
 	file.WriteString(example1)
-	_, err = Setup("test.log", "test.json")
-	if err != nil {
-		t.Error(err)
-	}
-	err = os.Remove("test.log")
+	_, err = Setup("test.json")
 	if err != nil {
 		t.Error(err)
 	}
