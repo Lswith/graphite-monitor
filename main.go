@@ -17,6 +17,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("Graphite-Monitor is starting!")
 	Run(config)
 }
 
@@ -51,6 +52,7 @@ func Run(config Config) {
 		}
 	}
 	for {
+		log.Println("Running Logic")
 		Loop(config, GetData, MonitorData, AlarmByEmail)
 		time.Sleep(d)
 	}
