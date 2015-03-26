@@ -22,3 +22,7 @@ vim /conf/conf.json
 sudo docker run --name graphite-monitor \
 -v /conf:/conf lswith/graphite-monitor
 ```
+
+### TODO
+- args for configuration paths
+- more robust logging 
