@@ -19,7 +19,7 @@ mkdir /conf
 #edit your configuration
 vim /conf/conf.json
 #start the container
-sudo docker run --name graphite-monitor \
+sudo docker run -d --name graphite-monitor \
 -v /conf:/conf lswith/graphite-monitor
 ```
 
