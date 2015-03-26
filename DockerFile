@@ -1,0 +1,8 @@
+# Docker build
+FROM golang
+MAINTAINER lswith
+
+ADD . /go/src/github.com/lswith/graphite-monitor
+
+RUN go install github.com/lswith/graphite-monitor
+
