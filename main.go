@@ -13,7 +13,13 @@ type Data struct {
 }
 
 func main() {
-	config, err := Setup("graphmon.log", "conf.json")
+	out, err := os.Create("graphmon.log")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer out.Close()
+	log.SetOutput(out)
+	config, err := Setup("conf.json")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -21,13 +27,7 @@ func main() {
 	Run(config)
 }
 
-func Setup(logfile string, configfile string) (Config, error) {
-	out, err := os.Create(logfile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer out.Close()
-	log.SetOutput(out)
+func Setup(configfile string) (Config, error) {
 	file, err := os.Open(configfile)
 	defer file.Close()
 	if err != nil {
