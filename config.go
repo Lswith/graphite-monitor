@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"io"
-	"log"
 )
 
 type Config struct {
@@ -22,12 +21,12 @@ type Config struct {
 	EmailSubject  string
 }
 
-func ReadConfig(r io.Reader) Config {
+func ReadConfig(r io.Reader) (Config, error) {
 	decoder := json.NewDecoder(r)
 	configuration := Config{}
 	err := decoder.Decode(&configuration)
 	if err != nil {
-		log.Panic(err)
+		return Config{}, err
 	}
-	return configuration
+	return configuration, nil
 }

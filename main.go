@@ -1,13 +1,8 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
 	"log"
 	"net/http"
-	"net/smtp"
-	"net/url"
 	"os"
 	"time"
 )
@@ -18,79 +13,66 @@ type Data struct {
 }
 
 func main() {
-	out, err := os.Create("graphmon.log")
+	config, err := Setup("graphmon.log", "conf.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	Run(config)
+}
+
+func Setup(logfile string, configfile string) (Config, error) {
+	out, err := os.Create(logfile)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer out.Close()
 	log.SetOutput(out)
-	file, err := os.Open("conf.json")
+	file, err := os.Open(configfile)
 	defer file.Close()
 	if err != nil {
-		log.Fatal(err)
+		return Config{}, err
 	}
-	config := ReadConfig(file)
-	auth := smtp.PlainAuth("", config.EmailUser, config.EmailPassword, config.EmailServer)
+	config, err := ReadConfig(file)
+	if err != nil {
+		return Config{}, err
+	}
+	return config, err
+}
+
+func Run(config Config) {
+	defer LogToEmail(config)
 	d, err := time.ParseDuration(config.Frequency)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+	} else {
+		d, err = time.ParseDuration("5m")
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println("graphite-monitor encounted an error: ", r)
-			SendEmail(config.EmailServer+":"+config.EmailPort, auth, "graphite-monitor encountered an error: "+err.Error(), config.EmailTo, config.EmailFrom)
-		}
-	}()
 	for {
-
-		data := getData(config)
-		alarms := MonitorData(data, config.Rule, config.Threshold)
-		for i := range alarms {
-			fmt.Printf("Target: %s has not met the threshold %f\n", alarms[i].Target, alarms[i].Threshold)
-			name := saveGraph(alarms[i], config)
-			SendEmailwithAttachment(config.EmailServer+":"+config.EmailPort, auth, config.EmailSubject+" "+alarms[i].Target, config.EmailTo, config.EmailFrom, name)
-			os.Remove(name)
-		}
+		Loop(config, GetData, MonitorData, AlarmByEmail)
 		time.Sleep(d)
 	}
 }
 
-func saveGraph(alarm Alarm, config Config) string {
-	var graphurl = config.Endpoint + "/render?" + "target=" + alarm.Target + "&from=" + config.Interval
-	out, err := os.Create(time.Now().Format("01-02-2015T15.04.05") + ".png")
+func Loop(config Config, getdata GetDataFunc, mondata MonitorDataFunc, alarmbyemail AlarmByEmailFunc) error {
+	data, err := getdata(config, &http.Client{})
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
-	defer out.Close()
-	resp, err := http.Get(graphurl)
+	alarms, err := mondata(data, config.Rule, config.Threshold)
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
-	defer resp.Body.Close()
-	io.Copy(out, resp.Body)
-	return out.Name()
-}
-
-func getData(config Config) []Data {
-	ep, _ := url.Parse(config.Endpoint)
-	values := url.Values{}
-	values.Set("target", config.Target)
-	values.Add("from", config.Interval)
-	actualurl := ep.String() + "/render" + "?" + values.Encode() + "&format=json"
-
-	resp, err := http.Get(actualurl)
-	defer resp.Body.Close()
-	if err != nil {
-		log.Panic(err)
-	}
-	dec := json.NewDecoder(resp.Body)
-	var m []Data
-	for {
-		if err := dec.Decode(&m); err == io.EOF {
-			break
-		} else if err != nil {
-			log.Panic(err)
+	for _, alarm := range alarms {
+		log.Printf("Target: %s has not met the threshold %f\n", alarm.Target, alarm.Threshold)
+		filename := time.Now().Format("01-02-2006T15:04:05") + ".png"
+		err := alarmbyemail(alarm, config, filename, SendEmailwithAttachment, SaveFile)
+		if err != nil {
+			log.Println(err)
+			continue
 		}
 	}
-	return m
+	return nil
 }

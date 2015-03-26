@@ -25,7 +25,10 @@ const example1 = `
 
 func TestReadConfig1(t *testing.T) {
 
-	c1 := ReadConfig(strings.NewReader(example1))
+	c1, err := ReadConfig(strings.NewReader(example1))
+	if err != nil {
+		t.Error("Shouldn't have returned an error")
+	}
 	if c1.Endpoint != "http://example.com" {
 		t.Error("endpoint not being read correctly")
 	}
@@ -68,12 +71,8 @@ func TestReadConfig1(t *testing.T) {
 }
 
 func TestReadConfig2(t *testing.T) {
-	recovered := false
-	defer func() {
-		if r := recover(); r != nil {
-			recovered = true
-		}
-	}()
-	ReadConfig(strings.NewReader("hello"))
-	t.Error("should have paniced")
+	_, err := ReadConfig(strings.NewReader("hello"))
+	if err == nil {
+		t.Error("should have returned an error for not being able to parse 'hello'")
+	}
 }

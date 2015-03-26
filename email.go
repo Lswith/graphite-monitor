@@ -3,48 +3,85 @@ package main
 import (
 	"github.com/scorredoira/email"
 	"log"
+	"net/http"
 	"net/smtp"
+	"os"
 )
 
-type Emailer interface {
-	SendMessage(string, smtp.Auth, *email.Message) error
+type EmailerFunc func(string, smtp.Auth, *email.Message) error
+
+type SendEmailwithAttachmentFunc func(addr string, auth smtp.Auth, subject string, to string, from string, filename string) error
+
+func SendEmailwithAttachment(addr string, auth smtp.Auth, subject string, to string, from string, filename string) error {
+	return SendEmailwithAttachmentwithEmailer(addr, auth, subject, to, from, filename, email.Send)
 }
 
-type Email int
-
-func (e Email) SendMessage(addr string, auth smtp.Auth, m *email.Message) error {
-	return email.Send(addr, auth, m)
-}
-
-func SendEmailwithAttachment(addr string, auth smtp.Auth, subject string, to string, from string, filename string) {
-	var e Email = 0
-	SendEmailwithAttachmentwithEmailer(addr, auth, subject, to, from, filename, e)
-}
-
-func SendEmailwithAttachmentwithEmailer(addr string, auth smtp.Auth, subject string, to string, from string, filename string, e Emailer) {
+func SendEmailwithAttachmentwithEmailer(addr string, auth smtp.Auth, subject string, to string, from string, filename string, e EmailerFunc) error {
 	m := email.NewMessage(subject, "")
 	m.To = []string{to}
 	m.From = from
 	err := m.Attach(filename)
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
-	err = e.SendMessage(addr, auth, m)
+	err = e(addr, auth, m)
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
+	return nil
 }
 
-func SendEmail(addr string, auth smtp.Auth, subject string, to string, from string) {
-	var e Email = 0
-	SendEmailwithEmailer(addr, auth, subject, to, from, e)
+type SendEmailFunc func(addr string, auth smtp.Auth, subject string, to string, from string) error
+
+func SendEmail(addr string, auth smtp.Auth, subject string, to string, from string) error {
+	return SendEmailwithEmailer(addr, auth, subject, to, from, email.Send)
 }
-func SendEmailwithEmailer(addr string, auth smtp.Auth, subject string, to string, from string, e Emailer) {
+
+func SendEmailwithEmailer(addr string, auth smtp.Auth, subject string, to string, from string, e EmailerFunc) error {
 	m := email.NewMessage(subject, "")
 	m.To = []string{to}
 	m.From = from
-	err := e.SendMessage(addr, auth, m)
+	err := e(addr, auth, m)
 	if err != nil {
-		log.Panic(err)
+		return err
+	}
+	return nil
+}
+
+type AlarmByEmailFunc func(alarm Alarm, config Config, graphname string, emailsend SendEmailwithAttachmentFunc, save SaveFileFunc) error
+
+func AlarmByEmail(alarm Alarm, config Config, filename string, emailsend SendEmailwithAttachmentFunc, save SaveFileFunc) error {
+	auth := smtp.PlainAuth("", config.EmailUser, config.EmailPassword, config.EmailServer)
+	client := http.Client{}
+	out, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	var graphurl = config.Endpoint + "/render?" + "target=" + alarm.Target + "&from=" + config.Interval
+	err = save(graphurl, &client, out)
+	if err != nil {
+		return err
+	}
+	err = emailsend(config.EmailServer+":"+config.EmailPort, auth, config.EmailSubject+" "+alarm.Target, config.EmailTo, config.EmailFrom, out.Name())
+	if err != nil {
+		return err
+	}
+	err = os.Remove(out.Name())
+	return err
+}
+
+func LogToEmail(config Config) {
+	auth := smtp.PlainAuth("", config.EmailUser, config.EmailPassword, config.EmailServer)
+	if r := recover(); r != nil {
+		log.Println("graphite-monitor encounted an error: ", r)
+		err := SendEmail(config.EmailServer+":"+config.EmailPort,
+			auth,
+			"graphite-monitor encountered an error",
+			config.EmailTo,
+			config.EmailFrom)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 }

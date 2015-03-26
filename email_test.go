@@ -3,16 +3,15 @@ package main
 import (
 	"errors"
 	"github.com/scorredoira/email"
+	"io"
 	"net/smtp"
 	"os"
 	"testing"
 )
 
-type TestEmail int
+var mess *email.Message = nil
 
-var mess *email.Message
-
-func (e TestEmail) SendMessage(addr string, auth smtp.Auth, m *email.Message) error {
+func SendMessage(addr string, auth smtp.Auth, m *email.Message) error {
 	mess = m
 	if addr == "fail" {
 		return errors.New("this is meant to return an error")
@@ -34,8 +33,11 @@ func TestSendEmailwithAttachmentwithEmailer1(t *testing.T) {
 		t.Fatal(err)
 	}
 	var subject = "subject"
-	var e TestEmail = 0
-	SendEmailwithAttachmentwithEmailer(addr, auth, subject, to, from, file.Name(), e)
+
+	err = SendEmailwithAttachmentwithEmailer(addr, auth, subject, to, from, file.Name(), SendMessage)
+	if err != nil {
+		t.Error("shoudn't have returned an error")
+	}
 	if mess.From != "from" {
 		t.Error("from not set")
 	}
@@ -54,12 +56,6 @@ func TestSendEmailwithAttachmentwithEmailer1(t *testing.T) {
 }
 
 func TestSendEmailwithAttachmentwithEmailer2(t *testing.T) {
-	recovered := false
-	defer func() {
-		if r := recover(); r != nil {
-			recovered = true
-		}
-	}()
 	var addr = "test"
 	var auth = smtp.PlainAuth("identity", "username", "password", "host")
 	var to = "to"
@@ -68,20 +64,13 @@ func TestSendEmailwithAttachmentwithEmailer2(t *testing.T) {
 		os.Remove("test.txt")
 	}
 	var subject = "subject"
-	var e TestEmail = 0
-	SendEmailwithAttachmentwithEmailer(addr, auth, subject, to, from, "test.txt", e)
-	if recovered == false {
-		t.Error("should have paniced trying to attach a non-existent file")
+	err := SendEmailwithAttachmentwithEmailer(addr, auth, subject, to, from, "test.txt", SendMessage)
+	if err == nil {
+		t.Error("should have returned an error for attaching a non-existent file")
 	}
 }
 
 func TestSendEmailwithAttachmentwithEmailer3(t *testing.T) {
-	recovered := false
-	defer func() {
-		if r := recover(); r != nil {
-			recovered = true
-		}
-	}()
 	var addr = "fail"
 	var auth = smtp.PlainAuth("identity", "username", "password", "host")
 	var to = "to"
@@ -93,10 +82,9 @@ func TestSendEmailwithAttachmentwithEmailer3(t *testing.T) {
 		t.Fatal(err)
 	}
 	var subject = "subject"
-	var e TestEmail = 0
-	SendEmailwithAttachmentwithEmailer(addr, auth, subject, to, from, file.Name(), e)
-	if recovered == false {
-		t.Error("should have paniced trying to send email")
+	err = SendEmailwithAttachmentwithEmailer(addr, auth, subject, to, from, file.Name(), SendMessage)
+	if err == nil {
+		t.Error("should have returned an error for failing to send email")
 	}
 }
 
@@ -107,8 +95,10 @@ func TestSendEmailwithEmailer1(t *testing.T) {
 	var to = "to"
 	var from = "from"
 	var subject = "subject"
-	var e TestEmail = 0
-	SendEmailwithEmailer(addr, auth, subject, to, from, e)
+	err := SendEmailwithEmailer(addr, auth, subject, to, from, SendMessage)
+	if err != nil {
+		t.Error("shouldn't have returned an error")
+	}
 	if mess.From != "from" {
 		t.Error("from not set")
 	}
@@ -125,20 +115,68 @@ func TestSendEmailwithEmailer1(t *testing.T) {
 
 func TestSendEmailwithEmailer2(t *testing.T) {
 	mess = email.NewMessage("", "")
-	recovered := false
-	defer func() {
-		if r := recover(); r != nil {
-			recovered = true
-		}
-	}()
 	var addr = "fail"
 	var auth = smtp.PlainAuth("identity", "username", "password", "host")
 	var to = "to"
 	var from = "from"
 	var subject = "subject"
-	var e TestEmail = 0
-	SendEmailwithEmailer(addr, auth, subject, to, from, e)
-	if recovered == false {
-		t.Error("should have paniced trying to send email")
+	err := SendEmailwithEmailer(addr, auth, subject, to, from, SendMessage)
+	if err == nil {
+		t.Error("should have returned an error for failing to send email")
+	}
+}
+
+func FakeSave1(url string, client Getter, file io.Writer) error {
+	return nil
+}
+
+func FakeSave2(url string, client Getter, file io.Writer) error {
+	return errors.New("save failed")
+}
+
+func FakeEmailSend1(addr string, auth smtp.Auth, subject string, to string, from string, filename string) error {
+	return nil
+}
+
+func FakeEmailSend2(addr string, auth smtp.Auth, subject string, to string, from string, filename string) error {
+	return errors.New("failed to send email")
+}
+
+func TestAlarmByEmail1(t *testing.T) {
+	filename := "test.png"
+	var a Alarm = Alarm{}
+	a.Rule = "=="
+	a.Target = "examples"
+	a.Threshold = 0.0
+	config := Config{}
+	err := AlarmByEmail(a, config, filename, FakeEmailSend1, FakeSave1)
+	if err != nil {
+		t.Error("shouldn't have returned an error")
+	}
+}
+
+func TestAlarmByEmail2(t *testing.T) {
+	filename := "test.png"
+	var a Alarm = Alarm{}
+	a.Rule = "=="
+	a.Target = "examples"
+	a.Threshold = 0.0
+	config := Config{}
+	err := AlarmByEmail(a, config, filename, FakeEmailSend2, FakeSave1)
+	if err == nil {
+		t.Error("should have returned an error for not being able to send email")
+	}
+}
+
+func TestAlarmByEmail3(t *testing.T) {
+	filename := "test.png"
+	var a Alarm = Alarm{}
+	a.Rule = "=="
+	a.Target = "examples"
+	a.Threshold = 0.0
+	config := Config{}
+	err := AlarmByEmail(a, config, filename, FakeEmailSend1, FakeSave2)
+	if err == nil {
+		t.Error("should have returned an error for not being able to save file")
 	}
 }

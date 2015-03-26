@@ -40,25 +40,25 @@ var alarmtests = []Test{
 
 func TestMonitorData(t *testing.T) {
 	for _, v := range noalarmtests {
-		alarms := MonitorData(d, v.rule, v.thres)
+		alarms, err := MonitorData(d, v.rule, v.thres)
 		if len(alarms) > 0 {
 			t.Error("an alarm should not have been generated")
 		}
+		if err != nil {
+			t.Error("shouldn't have returned an error")
+		}
 	}
 	for _, v := range alarmtests {
-		alarms := MonitorData(d, v.rule, v.thres)
+		alarms, err := MonitorData(d, v.rule, v.thres)
 		if len(alarms) == 0 {
 			t.Error("an alarm should have been generated: ", v.rule, v.thres)
 		}
-	}
-	recovered := false
-	defer func() {
-		if r := recover(); r != nil {
-			recovered = true
+		if err != nil {
+			t.Error("shouldn't have returned an error")
 		}
-	}()
-	MonitorData(d, "=", 0.0)
-	if recovered != false {
-		t.Error("should have sent a panic when it couldn't parse the rule")
+	}
+	_, err := MonitorData(d, "=", 0.0)
+	if err == nil {
+		t.Error("should have returned an error when it couldn't parse the rule")
 	}
 }
