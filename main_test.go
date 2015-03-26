@@ -20,6 +20,27 @@ func TestSetup(t *testing.T) {
 	}
 }
 
+func TestParseFrequency1(t *testing.T) {
+	config := Config{}
+	config.Frequency = "20m"
+	_, err := ParseFrequency(config)
+	if err != nil {
+		t.Error("ParseFrequency shouldn't have returned an error: ", err)
+	}
+}
+
+func TestParseFrequency2(t *testing.T) {
+	config := Config{}
+	config.Frequency = "blah"
+	d, err := ParseFrequency(config)
+	if err != nil {
+		t.Error("ParseFrequency shouldn't have returned an error: ", err)
+	}
+	if d.Minutes() != 5 {
+		t.Error("didn't return the correct duration")
+	}
+}
+
 func FakeGetData1(config Config, client Getter) ([]Data, error) {
 	return []Data{}, nil
 }

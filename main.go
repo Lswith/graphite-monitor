@@ -42,19 +42,27 @@ func Setup(configfile string) (Config, error) {
 
 func Run(config Config) {
 	defer LogToEmail(config)
-	d, err := time.ParseDuration(config.Frequency)
+	d, err := ParseFrequency(config)
 	if err != nil {
-		log.Println(err)
-		d, err = time.ParseDuration("5m")
-		if err != nil {
-			log.Fatal(err)
-		}
+		log.Fatal(err)
 	}
 	for {
 		log.Println("Running Logic")
 		Loop(config, GetData, MonitorData, AlarmByEmail)
 		time.Sleep(d)
 	}
+}
+
+func ParseFrequency(config Config) (time.Duration, error) {
+	d, err := time.ParseDuration(config.Frequency)
+	if err != nil {
+		log.Println(err)
+		d, err = time.ParseDuration("5m")
+		if err != nil {
+			return 0, err
+		}
+	}
+	return d, err
 }
 
 func Loop(config Config, getdata GetDataFunc, mondata MonitorDataFunc, alarmbyemail AlarmByEmailFunc) error {
