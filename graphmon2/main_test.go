@@ -49,7 +49,7 @@ func TestGenerateNotifications2(t *testing.T) {
 	alarms[0].Threshold = 0
 	alarms[0].Rule = "!="
 	alarms[0].Target = "test"
-	alarms[0].enabled = true
+	alarms[0].Enabled = true
 	fakegetter := FakeDataGetter{}
 	fakegetter.data = Data{
 		[][2]float64{

@@ -59,16 +59,14 @@ func GenerateNotifications(alarms []Alarm, getter DataGetter) ([]Notification, e
 			log.Error("Couldn't get data for Target: %s", v.Target)
 			continue
 		}
-		if v.IsEnabled() {
-			hasbeenmet, err := v.HasRuleBeenMet(d)
-			if err != nil {
-				log.Error("Couldn't determine if rule has been met", err)
-			}
-			if hasbeenmet {
-				notification := Notification{}
-				notification.Message = "Rule: " + v.Rule + " has been met for target: " + v.Target
-				notifications = append(notifications, notification)
-			}
+		down, err := v.Down(d)
+		if err != nil {
+			log.Error("Couldn't determine if rule has been met", err)
+		}
+		if down {
+			notification := Notification{}
+			notification.Message = "Rule: " + v.Rule + " has been met for target: " + v.Target
+			notifications = append(notifications, notification)
 		}
 	}
 	return notifications, nil

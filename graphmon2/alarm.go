@@ -9,7 +9,7 @@ type Alarm struct {
 	Target    string
 	Threshold float64
 	Rule      string
-	enabled   bool
+	Enabled   bool
 }
 
 func (a *Alarm) HasRuleBeenMet(data Data) (bool, error) {
@@ -56,14 +56,9 @@ func (a *Alarm) HasRuleBeenMet(data Data) (bool, error) {
 	return false, nil
 }
 
-func (a *Alarm) EnableAlarm() {
-	a.enabled = true
-}
-
-func (a *Alarm) DisableAlarm() {
-	a.enabled = false
-}
-
-func (a *Alarm) IsEnabled() bool {
-	return a.enabled
+func (a *Alarm) Down(data Data) (bool, error) {
+	if a.Enabled {
+		return a.HasRuleBeenMet(data)
+	}
+	return false, nil
 }
