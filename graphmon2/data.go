@@ -1,13 +1,15 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 )
 
 type DataGetter interface {
-	GetDataForTarget(target string, interval string) (Data, error)
+	GetDataForTarget(target string, interval string) ([]Data, error)
 }
 
 type Data struct {
@@ -20,7 +22,7 @@ type GraphiteGetter struct {
 	Client   *http.Client
 }
 
-func (g *GraphiteGetter) GetDataForTarget(target string, interval string) (Data, error) {
+func (g *GraphiteGetter) GetDataForTarget(target string, interval string) ([]Data, error) {
 	values := url.Values{}
 	values.Set("target", target)
 	values.Add("from", interval)
@@ -28,7 +30,7 @@ func (g *GraphiteGetter) GetDataForTarget(target string, interval string) (Data,
 	u, err := url.ParseRequestURI(g.Endpoint)
 	if err != nil {
 		log.Error("Couldn't get Data for target: "+target, err)
-		return Data{}, nil
+		return []Data{}, nil
 	}
 	u.Path = "/render"
 	u.RawQuery = values.Encode()
@@ -47,5 +49,5 @@ func (g *GraphiteGetter) GetDataForTarget(target string, interval string) (Data,
 			return []Data{}, err
 		}
 	}
-	return Data{}, nil
+	return m, nil
 }

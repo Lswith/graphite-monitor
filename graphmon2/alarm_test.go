@@ -9,11 +9,14 @@ type Test struct {
 	thres float64
 }
 
-var d = Data{
-	[][2]float64{
-		[2]float64{
-			1.1,
-			2.2,
+var d = []Data{
+	Data{
+		"hello",
+		[][2]float64{
+			[2]float64{
+				1.1,
+				2.2,
+			},
 		},
 	},
 }
@@ -41,11 +44,11 @@ func TestHasRuleBeenMet(t *testing.T) {
 		alarm.Rule = v.rule
 		alarm.Threshold = v.thres
 
-		hasbeenmet, err := alarm.HasRuleBeenMet(d)
+		targets, err := alarm.HasRuleBeenMet(d)
 		if err != nil {
 			t.Error("HasRuleBeenMet shouldn't have generated an error")
 		}
-		if hasbeenmet {
+		if len(targets) > 0 {
 			t.Error("rule: " + v.rule + " should not have been met")
 		}
 	}
@@ -53,11 +56,11 @@ func TestHasRuleBeenMet(t *testing.T) {
 		alarm.Rule = v.rule
 		alarm.Threshold = v.thres
 
-		hasbeenmet, err := alarm.HasRuleBeenMet(d)
+		targets, err := alarm.HasRuleBeenMet(d)
 		if err != nil {
 			t.Error("HasRuleBeenMet shouldn't have generated an error")
 		}
-		if !hasbeenmet {
+		if len(targets) == 0 {
 			t.Error("rule: " + v.rule + " should have been met")
 		}
 	}

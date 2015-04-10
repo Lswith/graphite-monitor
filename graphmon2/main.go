@@ -54,18 +54,18 @@ func start() {
 func GenerateNotifications(alarms []Alarm, getter DataGetter) ([]Notification, error) {
 	notifications := make([]Notification, 0)
 	for _, v := range alarms {
-		d, err := getter.GetDataForTarget(v.Target)
+		d, err := getter.GetDataForTarget(v.Target, v.Interval)
 		if err != nil {
 			log.Error("Couldn't get data for Target: %s", v.Target)
 			continue
 		}
-		down, err := v.Down(d)
+		alarmedtargets, err := v.Down(d)
 		if err != nil {
 			log.Error("Couldn't determine if rule has been met", err)
 		}
-		if down {
+		for _, target := range alarmedtargets {
 			notification := Notification{}
-			notification.Message = "Rule: " + v.Rule + " has been met for target: " + v.Target
+			notification.Message = "Rule: " + v.Rule + " has been met for target: " + target
 			notifications = append(notifications, notification)
 		}
 	}

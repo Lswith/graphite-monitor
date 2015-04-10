@@ -24,10 +24,10 @@ func TestCheckSettings(t *testing.T) {
 }
 
 type FakeDataGetter struct {
-	data Data
+	data []Data
 }
 
-func (f *FakeDataGetter) GetDataForTarget(target string) (Data, error) {
+func (f *FakeDataGetter) GetDataForTarget(target string, interval string) ([]Data, error) {
 	return f.data, nil
 
 }
@@ -51,11 +51,14 @@ func TestGenerateNotifications2(t *testing.T) {
 	alarms[0].Target = "test"
 	alarms[0].Enabled = true
 	fakegetter := FakeDataGetter{}
-	fakegetter.data = Data{
-		[][2]float64{
-			[2]float64{
-				1.1,
-				2.2,
+	fakegetter.data = []Data{
+		Data{
+			"hello",
+			[][2]float64{
+				[2]float64{
+					1.1,
+					2.2,
+				},
 			},
 		},
 	}
@@ -66,7 +69,7 @@ func TestGenerateNotifications2(t *testing.T) {
 	if len(notifications) != 1 {
 		t.Error("GenerateNotifications should have returned 1 notification")
 	}
-	var testmsg = "Rule: " + alarms[0].Rule + " has been met for target: " + alarms[0].Target
+	var testmsg = "Rule: " + alarms[0].Rule + " has been met for target: hello"
 	if notifications[0].Message != testmsg {
 		t.Error("GenerateNotifications should have produced the test message: " + testmsg)
 	}

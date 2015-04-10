@@ -8,57 +8,72 @@ import (
 type Alarm struct {
 	Target    string
 	Threshold float64
+	Interval  string
 	Rule      string
 	Enabled   bool
 }
 
-func (a *Alarm) HasRuleBeenMet(data Data) (bool, error) {
+func (a *Alarm) HasRuleBeenMet(datas []Data) ([]string, error) {
+	targets := make([]string, 0)
 	switch a.Rule {
 	case "==":
-		for j := range data.DataPoints {
-			if data.DataPoints[j][0] == a.Threshold {
-				return true, nil
+		for _, data := range datas {
+			for j := range data.DataPoints {
+				if data.DataPoints[j][0] == a.Threshold {
+					targets = append(targets, data.Target)
+				}
 			}
 		}
 	case "!=":
-		for j := range data.DataPoints {
-			if data.DataPoints[j][0] != a.Threshold {
-				return true, nil
+		for _, data := range datas {
+			for j := range data.DataPoints {
+				if data.DataPoints[j][0] != a.Threshold {
+					targets = append(targets, data.Target)
+				}
 			}
 		}
 	case "<":
-		for j := range data.DataPoints {
-			if data.DataPoints[j][0] < a.Threshold {
-				return true, nil
+		for _, data := range datas {
+			for j := range data.DataPoints {
+				if data.DataPoints[j][0] < a.Threshold {
+					targets = append(targets, data.Target)
+				}
 			}
 		}
 	case "<=":
-		for j := range data.DataPoints {
-			if data.DataPoints[j][0] <= a.Threshold {
-				return true, nil
+		for _, data := range datas {
+			for j := range data.DataPoints {
+				if data.DataPoints[j][0] <= a.Threshold {
+					targets = append(targets, data.Target)
+				}
 			}
 		}
 	case ">":
-		for j := range data.DataPoints {
-			if data.DataPoints[j][0] > a.Threshold {
-				return true, nil
+		for _, data := range datas {
+			for j := range data.DataPoints {
+				if data.DataPoints[j][0] > a.Threshold {
+					targets = append(targets, data.Target)
+				}
 			}
 		}
 	case ">=":
-		for j := range data.DataPoints {
-			if data.DataPoints[j][0] >= a.Threshold {
-				return true, nil
+		for _, data := range datas {
+			for j := range data.DataPoints {
+				if data.DataPoints[j][0] >= a.Threshold {
+					targets = append(targets, data.Target)
+				}
 			}
 		}
 	default:
-		return true, errors.New("Rule couldn't be parsed")
+		return targets, errors.New("Rule couldn't be parsed")
 	}
-	return false, nil
+
+	return targets, nil
 }
 
-func (a *Alarm) Down(data Data) (bool, error) {
+func (a *Alarm) Down(data []Data) ([]string, error) {
 	if a.Enabled {
 		return a.HasRuleBeenMet(data)
 	}
-	return false, nil
+	return make([]string, 0), nil
 }

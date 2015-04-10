@@ -35,15 +35,19 @@ func TestGetDataForTarget(t *testing.T) {
 	}
 	httpClient := &http.Client{Transport: transport}
 	g := GraphiteGetter{}
+	g.Endpoint = "http://test.com"
 	g.Client = httpClient
-	data, err := g.GetDataForTarget("target")
+	data, err := g.GetDataForTarget("target", "-5mins")
 	if err != nil {
 		t.Error("GetDataForTarget should not have thrown an error")
 	}
-	if len(data.DataPoints) != 6 {
+	if len(data) != 1 {
 		t.Error("GetDataForTarget is not returning the correct amount of datapoints")
 	}
-	for i, v := range data.DataPoints {
+	if len(data[0].DataPoints) != 6 {
+		t.Error("GetDataForTarget is not returning the correct amount of datapoints")
+	}
+	for i, v := range data[0].DataPoints {
 		if v[0] != 0.0 {
 			t.Error("GetDataForTarget has not parsed the datapoints correctly")
 		}
