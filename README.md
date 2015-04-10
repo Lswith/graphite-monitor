@@ -26,3 +26,8 @@ sudo docker run -d --name graphite-monitor \
 ### TODO
 - args for configuration paths
 - more robust logging 
+- Web Interface
+  - Set Configuration
+  - Login
+  - Enable Disable Alarms
+  - Snooze Alarms
