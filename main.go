@@ -13,7 +13,13 @@ type Data struct {
 }
 
 func main() {
-	config, err := Setup("graphmon.log", "conf.json")
+	out, err := os.Create("graphmon.log")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer out.Close()
+	log.SetOutput(out)
+	config, err := Setup("conf.json")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -21,13 +27,7 @@ func main() {
 	Run(config)
 }
 
-func Setup(logfile string, configfile string) (Config, error) {
-	out, err := os.Create(logfile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer out.Close()
-	log.SetOutput(out)
+func Setup(configfile string) (Config, error) {
 	file, err := os.Open(configfile)
 	defer file.Close()
 	if err != nil {
@@ -42,20 +42,27 @@ func Setup(logfile string, configfile string) (Config, error) {
 
 func Run(config Config) {
 	defer LogToEmail(config)
-	d, err := time.ParseDuration(config.Frequency)
+	d, err := ParseFrequency(config)
 	if err != nil {
-		log.Println(err)
-	} else {
-		d, err = time.ParseDuration("5m")
-		if err != nil {
-			log.Fatal(err)
-		}
+		log.Fatal(err)
 	}
 	for {
 		log.Println("Running Logic")
 		Loop(config, GetData, MonitorData, AlarmByEmail)
 		time.Sleep(d)
 	}
+}
+
+func ParseFrequency(config Config) (time.Duration, error) {
+	d, err := time.ParseDuration(config.Frequency)
+	if err != nil {
+		log.Println(err)
+		d, err = time.ParseDuration("5m")
+		if err != nil {
+			return 0, err
+		}
+	}
+	return d, err
 }
 
 func Loop(config Config, getdata GetDataFunc, mondata MonitorDataFunc, alarmbyemail AlarmByEmailFunc) error {

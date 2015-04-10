@@ -143,7 +143,7 @@ func FakeEmailSend2(addr string, auth smtp.Auth, subject string, to string, from
 }
 
 func TestAlarmByEmail1(t *testing.T) {
-	filename := "test.png"
+	filename := "test1.png"
 	var a Alarm = Alarm{}
 	a.Rule = "=="
 	a.Target = "examples"
@@ -151,12 +151,12 @@ func TestAlarmByEmail1(t *testing.T) {
 	config := Config{}
 	err := AlarmByEmail(a, config, filename, FakeEmailSend1, FakeSave1)
 	if err != nil {
-		t.Error("shouldn't have returned an error")
+		t.Error("shouldn't have returned an error: ", err)
 	}
 }
 
 func TestAlarmByEmail2(t *testing.T) {
-	filename := "test.png"
+	filename := "test2.png"
 	var a Alarm = Alarm{}
 	a.Rule = "=="
 	a.Target = "examples"
@@ -169,7 +169,7 @@ func TestAlarmByEmail2(t *testing.T) {
 }
 
 func TestAlarmByEmail3(t *testing.T) {
-	filename := "test.png"
+	filename := "test3.png"
 	var a Alarm = Alarm{}
 	a.Rule = "=="
 	a.Target = "examples"
