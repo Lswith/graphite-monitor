@@ -7,13 +7,13 @@ import (
 	"time"
 )
 
-var log = logging.MustGetLogger("graphmon")
+var log = logging.MustGetLogger("backend")
 
 var filesettings FileSettings
 
 func main() {
 	log.Info("starting Graphite-Monitor")
-	filesettings.Filename = "graphmon.conf"
+	filesettings.Filename = "backend.conf"
 	filename := "graphmon.log"
 	out, err := os.Create(filename)
 	defer out.Close()
