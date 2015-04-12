@@ -1,4 +1,4 @@
-package main
+package backend
 
 import (
 	// "fmt"
@@ -11,7 +11,11 @@ var log = logging.MustGetLogger("backend")
 
 var filesettings FileSettings
 
-func main() {
+func init() {
+	go backend()
+}
+
+func backend() {
 	log.Info("starting Graphite-Monitor")
 	filesettings.Filename = "backend.conf"
 	filename := "graphmon.log"
