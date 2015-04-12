@@ -21,6 +21,7 @@ func (a *Alarm) HasRuleBeenMet(datas []Data) ([]string, error) {
 			for j := range data.DataPoints {
 				if data.DataPoints[j][0] == a.Threshold {
 					targets = append(targets, data.Target)
+					break
 				}
 			}
 		}
@@ -29,6 +30,7 @@ func (a *Alarm) HasRuleBeenMet(datas []Data) ([]string, error) {
 			for j := range data.DataPoints {
 				if data.DataPoints[j][0] != a.Threshold {
 					targets = append(targets, data.Target)
+					break
 				}
 			}
 		}
@@ -37,6 +39,7 @@ func (a *Alarm) HasRuleBeenMet(datas []Data) ([]string, error) {
 			for j := range data.DataPoints {
 				if data.DataPoints[j][0] < a.Threshold {
 					targets = append(targets, data.Target)
+					break
 				}
 			}
 		}
@@ -45,6 +48,7 @@ func (a *Alarm) HasRuleBeenMet(datas []Data) ([]string, error) {
 			for j := range data.DataPoints {
 				if data.DataPoints[j][0] <= a.Threshold {
 					targets = append(targets, data.Target)
+					break
 				}
 			}
 		}
@@ -53,6 +57,7 @@ func (a *Alarm) HasRuleBeenMet(datas []Data) ([]string, error) {
 			for j := range data.DataPoints {
 				if data.DataPoints[j][0] > a.Threshold {
 					targets = append(targets, data.Target)
+					break
 				}
 			}
 		}
@@ -61,6 +66,7 @@ func (a *Alarm) HasRuleBeenMet(datas []Data) ([]string, error) {
 			for j := range data.DataPoints {
 				if data.DataPoints[j][0] >= a.Threshold {
 					targets = append(targets, data.Target)
+					break
 				}
 			}
 		}

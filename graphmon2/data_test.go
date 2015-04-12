@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestGetDataForTarget(t *testing.T) {
+func TestGetDataForAlarm(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 		jsondata := `
@@ -28,8 +28,10 @@ func TestGetDataForTarget(t *testing.T) {
 		w.Write([]byte(jsondata))
 	}))
 	defer server.Close()
+	var request *http.Request
 	transport := &http.Transport{
 		Proxy: func(req *http.Request) (*url.URL, error) {
+			request = req
 			return url.Parse(server.URL)
 		},
 	}
@@ -37,7 +39,7 @@ func TestGetDataForTarget(t *testing.T) {
 	g := GraphiteGetter{}
 	g.Endpoint = "http://test.com"
 	g.Client = httpClient
-	data, err := g.GetDataForTarget("target", "-5mins")
+	data, err := g.GetDataForAlarm(Alarm{"stats.*", 0.0, "-5mins", ">", true})
 	if err != nil {
 		t.Error("GetDataForTarget should not have thrown an error")
 	}
@@ -54,5 +56,23 @@ func TestGetDataForTarget(t *testing.T) {
 		if v[1] != (100.0 + float64(i)*10.0) {
 			t.Error("GetDataForTarget has not parsed the datapoints correctly")
 		}
+	}
+	if err = request.ParseForm(); err != nil {
+		t.Error("GetDataForTarget created a bad request")
+	}
+	if request.Host != "test.com" {
+		t.Error("GetDataForTarget created a bad request")
+	}
+	if request.Method != "GET" {
+		t.Error("GetDataForTarget created a bad request")
+	}
+	if request.Form.Get("target") != "stats.*" {
+		t.Error("GetDataForTarget created a bad request")
+	}
+	if request.Form.Get("from") != "-5mins" {
+		t.Error("GetDataForTarget created a bad request")
+	}
+	if request.Form.Get("format") != "json" {
+		t.Error("GetDataForTarget created a bad request")
 	}
 }

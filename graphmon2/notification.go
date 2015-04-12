@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/smtp"
 )
 
@@ -21,4 +22,14 @@ func (*EmailNotifier) Notify([]Notification) error {
 
 type Notification struct {
 	Message string
+}
+
+type ConsoleNotifier struct {
+}
+
+func (*ConsoleNotifier) Notify(notifications []Notification) error {
+	for _, notification := range notifications {
+		fmt.Println(notification.Message)
+	}
+	return nil
 }

@@ -17,6 +17,10 @@ var d = []Data{
 				1.1,
 				2.2,
 			},
+			[2]float64{
+				1.1,
+				2.2,
+			},
 		},
 	},
 }
@@ -43,7 +47,7 @@ func TestHasRuleBeenMet(t *testing.T) {
 	for _, v := range hasnotbeenmettests {
 		alarm.Rule = v.rule
 		alarm.Threshold = v.thres
-
+		alarm.Target = "test"
 		targets, err := alarm.HasRuleBeenMet(d)
 		if err != nil {
 			t.Error("HasRuleBeenMet shouldn't have generated an error")
@@ -62,6 +66,9 @@ func TestHasRuleBeenMet(t *testing.T) {
 		}
 		if len(targets) == 0 {
 			t.Error("rule: " + v.rule + " should have been met")
+		}
+		if len(targets) != 1 {
+			t.Error("rule: " + v.rule + "should have been met once")
 		}
 	}
 }

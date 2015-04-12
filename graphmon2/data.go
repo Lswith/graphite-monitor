@@ -2,14 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 )
 
 type DataGetter interface {
-	GetDataForTarget(target string, interval string) ([]Data, error)
+	GetDataForAlarm(alarm Alarm) ([]Data, error)
 }
 
 type Data struct {
@@ -22,22 +21,22 @@ type GraphiteGetter struct {
 	Client   *http.Client
 }
 
-func (g *GraphiteGetter) GetDataForTarget(target string, interval string) ([]Data, error) {
+func (g *GraphiteGetter) GetDataForAlarm(alarm Alarm) ([]Data, error) {
 	values := url.Values{}
-	values.Set("target", target)
-	values.Add("from", interval)
+	values.Add("target", alarm.Target)
+	values.Add("from", alarm.Interval)
 	values.Add("format", "json")
 	u, err := url.ParseRequestURI(g.Endpoint)
 	if err != nil {
-		log.Error("Couldn't get Data for target: "+target, err)
+		log.Error("Couldn't get Data for target: "+alarm.Target, err)
 		return []Data{}, nil
 	}
 	u.Path = "/render"
 	u.RawQuery = values.Encode()
-	urlStr := fmt.Sprintf("%v", u)
+	urlStr := u.String()
 	resp, err := g.Client.Get(urlStr)
 	if err != nil {
-		log.Error("Couldn't get Data for target: "+target, err)
+		log.Error("Couldn't get Data for target: "+alarm.Target, err)
 	}
 	defer resp.Body.Close()
 	dec := json.NewDecoder(resp.Body)

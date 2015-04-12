@@ -9,9 +9,11 @@ import (
 
 var log = logging.MustGetLogger("graphmon")
 
-var settings *Settings = new(Settings)
+var filesettings FileSettings
 
 func main() {
+	log.Info("starting graphmon")
+	filesettings.Filename = "graphmon.conf"
 	filename := "graphmon.log"
 	out, err := os.Create(filename)
 	defer out.Close()
@@ -19,22 +21,27 @@ func main() {
 		panic(err)
 	}
 	backend := logging.NewLogBackend(out, "", 0)
-	if err = SetupLogging(backend); err != nil {
+	backend2 := logging.NewLogBackend(os.Stderr, "", 0)
+	if err = SetupLogging([]logging.Backend{backend, backend2}); err != nil {
 		panic(err)
 	}
-	settings.UpdateSettings()
 	start()
 }
 
-func SetupLogging(backend *logging.LogBackend) error {
-	logging.SetBackend(backend)
+func SetupLogging(backends []logging.Backend) error {
+	logging.SetBackend(backends...)
 	return nil
 }
 
 func start() {
 	for {
+		log.Info("Running Loop")
 		//check settings
-		settings.UpdateSettings()
+		settings, err := filesettings.UpdateSettings()
+		if err != nil {
+			log.Error("Couldn't get settings", err)
+			continue
+		}
 		//generate notifications for alarms
 		notifications, err := GenerateNotifications(settings.Alarms, settings.Graphite)
 		if err != nil {
@@ -52,20 +59,21 @@ func start() {
 }
 
 func GenerateNotifications(alarms []Alarm, getter DataGetter) ([]Notification, error) {
+	log.Info("Generating Notifications...")
 	notifications := make([]Notification, 0)
-	for _, v := range alarms {
-		d, err := getter.GetDataForTarget(v.Target, v.Interval)
+	for _, alarm := range alarms {
+		data, err := getter.GetDataForAlarm(alarm)
 		if err != nil {
-			log.Error("Couldn't get data for Target: %s", v.Target)
+			log.Error("Couldn't get data for Target: %s", alarm.Target)
 			continue
 		}
-		alarmedtargets, err := v.Down(d)
+		alarmedtargets, err := alarm.Down(data)
 		if err != nil {
 			log.Error("Couldn't determine if rule has been met", err)
 		}
 		for _, target := range alarmedtargets {
 			notification := Notification{}
-			notification.Message = "Rule: " + v.Rule + " has been met for target: " + target
+			notification.Message = "Rule: " + alarm.Rule + " has been met for target: " + target
 			notifications = append(notifications, notification)
 		}
 	}

@@ -12,14 +12,8 @@ func TestSetupLogging(t *testing.T) {
 		t.Error("logging didn't initialize")
 	}
 	backend := logging.NewLogBackend(os.Stderr, "", 0)
-	if err := SetupLogging(backend); err != nil {
+	if err := SetupLogging([]logging.Backend{backend}); err != nil {
 		t.Error("SetupLogging should not have thrown an error", err)
-	}
-}
-
-func TestCheckSettings(t *testing.T) {
-	if settings == nil {
-		t.Error("Settings should not be nil")
 	}
 }
 
@@ -27,7 +21,7 @@ type FakeDataGetter struct {
 	data []Data
 }
 
-func (f *FakeDataGetter) GetDataForTarget(target string, interval string) ([]Data, error) {
+func (f *FakeDataGetter) GetDataForAlarm(alarm Alarm) ([]Data, error) {
 	return f.data, nil
 
 }
