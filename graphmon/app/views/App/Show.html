@@ -1,0 +1,21 @@
+{{set . "title" "Home"}}
+{{template "header.html" .}}
+<div class="container">
+  <table class="table">
+    {{ range $k,$v := .currentstates }}
+    <tr>
+    <td>{{ $k.Name }}</td>
+    <td>{{  $v }}</td>
+    </tr>
+    {{end}}
+  </table>
+</div>
+<div class="container">
+  <div class="row">
+    <div class="span6">
+      {{template "flash.html" .}}
+    </div>
+  </div>
+</div>
+
+{{template "footer.html" .}}
