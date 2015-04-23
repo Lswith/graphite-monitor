@@ -45,7 +45,7 @@ var (
 	del        chan *Alarm
 	alarms     map[*Alarm]State
 	updates    chan Update
-	alarmslock sync.Mutex
+	alarmslock *sync.Mutex
 )
 
 type Update struct {
@@ -87,12 +87,13 @@ func init() {
 	del = make(chan *Alarm)
 	alarms = make(map[*Alarm]State)
 	updates = make(chan Update)
+	alarmslock = new(sync.Mutex)
 	go run()
 	go func() {
 		for {
 			select {
 			case u := <-updates:
-				notify(u.Current, u.A)
+				notify(u)
 			}
 		}
 	}()

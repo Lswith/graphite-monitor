@@ -3,20 +3,36 @@ package alarm
 import (
 	// "net/smtp"
 	"fmt"
+	"sync"
 )
 
 var (
-	nm string
+	notifiers     []Notifier
+	notifierslock *sync.Mutex
 )
 
-func notify(state State, a *Alarm) {
-	fmt.Printf("Notifier: %s is notifying about Alarm: %s is in State: %t\n", nm, a.Name, state)
+type PrintNotifier struct {
+}
+
+type Notifier interface {
+	Notify(u Update)
+}
+
+func (n *PrintNotifier) Notify(u Update) {
+	fmt.Printf("Alarm: %s is in State: %t\n", u.A.Name, u.Current)
+}
+
+func notify(u Update) {
+	notifierslock.Lock()
+	for _, n := range notifiers {
+		n.Notify(u)
+	}
+	notifierslock.Unlock()
 }
 
 func init() {
-	nm = "test"
-}
-
-func UpdateNotifier(name string) {
-	nm = name
+	notifiers = make([]Notifier, 0)
+	printer := new(PrintNotifier)
+	notifiers = append(notifiers, printer)
+	notifierslock = new(sync.Mutex)
 }
