@@ -1,0 +1,31 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# ~~~~
+
+module:testrunner
+
+GET     /                                       App.Index
+POST	/alarms 								Alarms.Add
+GET		/alarms 								Alarms.Map
+GET		/alarms/:id 							Alarms.Get
+DELETE	/alarms/:id 							Alarms.Delete
+
+POST	/notifiers 								Notifiers.Add
+GET		/notifiers 								Notifiers.Map
+GET		/notifiers/:id 							Notifiers.Get
+DELETE	/notifiers/:id 							Notifiers.Delete
+
+POST	/periodicwatchers 								Monitor.AddPeriodicWatcher
+GET		/periodicwatchers 								Monitor.MapPeriodicWatchers
+GET		/periodicwatchers/:id 							Monitor.GetPeriodicWatcher
+DELETE	/periodicwatchers/:id 							Monitor.DeletePeriodicWatcher
+
+
+# Ignore favicon requests
+GET     /favicon.ico                            404
+
+# Map static resources from the /app/public folder to the /public path
+GET     /public/*filepath                       Static.Serve("public")
+
+# Catch all
+*       /:controller/:action                    :controller.:action

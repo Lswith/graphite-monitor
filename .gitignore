@@ -1,7 +1,0 @@
-
-*.sublime-project
-
-*.sublime-workspace
-test-results/
-tmp/
-routes/
