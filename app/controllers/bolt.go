@@ -1,19 +1,36 @@
-package storage
+package controllers
 
 import (
 	"crypto/rand"
 	"errors"
 	"fmt"
 	"github.com/boltdb/bolt"
+	"github.com/revel/revel"
 	"io"
 	"log"
 )
 
-var filename = "graphite-monitor.db"
+var (
+	Db                    *bolt.DB
+	AlarmBucket           string
+	NotifierBucket        string
+	StatefulWatcherBucket string
+	PeriodicWatcherBucket string
+)
 
-var ErrNF = errors.New("couldn't find value for id")
+type BoltController struct {
+	*revel.Controller
+}
 
-func GenerateKey() (string, error) {
+type Marshaler interface {
+	Marshal() ([]byte, error)
+}
+
+type UnMarshaler interface {
+	UnMarshal(m []byte) error
+}
+
+func (c *BoltController) GenerateKey() (string, error) {
 	uuid := make([]byte, 16)
 	n, err := io.ReadFull(rand.Reader, uuid)
 	if n != len(uuid) || err != nil {
@@ -27,16 +44,8 @@ func GenerateKey() (string, error) {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
 }
 
-type Marshaler interface {
-	Marshal() ([]byte, error)
-}
-
-type UnMarshaler interface {
-	UnMarshal(m []byte) error
-}
-
-func AddObject(m Marshaler, bucket string) (string, error) {
-	key, err := GenerateKey()
+func (c *BoltController) AddObject(m Marshaler, bucket string) (string, error) {
+	key, err := c.GenerateKey()
 	if err != nil {
 		log.Println(err)
 		return "", err
@@ -49,7 +58,7 @@ func AddObject(m Marshaler, bucket string) (string, error) {
 	return key, Store([]byte(key), value, []byte(bucket))
 }
 
-func GetObject(key string, u UnMarshaler, bucket string) error {
+func (c *BoltController) GetObject(key string, u UnMarshaler, bucket string) error {
 	log.Printf("retrieving for key: %s\n", key)
 	value, err := Retrieve([]byte(key), []byte(bucket))
 	if err != nil {
@@ -59,11 +68,11 @@ func GetObject(key string, u UnMarshaler, bucket string) error {
 	return u.UnMarshal(value)
 }
 
-func DeleteObject(key string, bucket string) error {
+func (c *BoltController) DeleteObject(key string, bucket string) error {
 	return Delete([]byte(key), []byte(bucket))
 }
 
-func GetKeys(bucket string) ([]string, error) {
+func (c *BoltController) GetKeys(bucket string) ([]string, error) {
 	m, err := RetrieveAll([]byte(bucket))
 	if err != nil {
 		log.Println(err)
@@ -77,12 +86,7 @@ func GetKeys(bucket string) ([]string, error) {
 }
 
 func Store(key []byte, value []byte, bucket []byte) error {
-	db, err := bolt.Open(filename, 0600, nil)
-	if err != nil {
-		log.Fatal(fmt.Errorf("open bolt %s: %s", filename, err))
-	}
-	defer db.Close()
-	err = db.Update(func(tx *bolt.Tx) error {
+	err := Db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(bucket)
 		if err != nil {
 			log.Println(err)
@@ -99,21 +103,12 @@ func Store(key []byte, value []byte, bucket []byte) error {
 }
 
 func Retrieve(key []byte, bucket []byte) ([]byte, error) {
-	db, err := bolt.Open(filename, 0600, nil)
-	if err != nil {
-		log.Fatal(fmt.Errorf("open bolt %s: %s", filename, err))
-	}
-	defer db.Close()
-	db.Update(func(tx *bolt.Tx) error {
-		tx.CreateBucketIfNotExists(bucket)
-		return nil
-	})
 	var v []byte
-	err = db.View(func(tx *bolt.Tx) error {
+	err := Db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucket)
 		value := b.Get(key)
 		if value == nil {
-			return ErrNF
+			return errors.New("couldn't find key")
 		}
 		v = make([]byte, len(value))
 		copy(v, value)
@@ -123,17 +118,8 @@ func Retrieve(key []byte, bucket []byte) ([]byte, error) {
 }
 
 func RetrieveAll(bucket []byte) (map[string][]byte, error) {
-	db, err := bolt.Open(filename, 0600, nil)
-	if err != nil {
-		log.Fatal(fmt.Errorf("open bolt %s: %s", filename, err))
-	}
-	defer db.Close()
-	db.Update(func(tx *bolt.Tx) error {
-		tx.CreateBucketIfNotExists(bucket)
-		return nil
-	})
 	data := make(map[string][]byte)
-	err = db.View(func(tx *bolt.Tx) error {
+	err := Db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucket)
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
@@ -147,14 +133,9 @@ func RetrieveAll(bucket []byte) (map[string][]byte, error) {
 }
 
 func Delete(key []byte, bucket []byte) error {
-	db, err := bolt.Open(filename, 0600, nil)
-	if err != nil {
-		log.Fatal(fmt.Errorf("open bolt %s: %s", filename, err))
-	}
-	defer db.Close()
-	err = db.Update(func(tx *bolt.Tx) error {
+	err := Db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucket)
-		err = b.Delete(key)
+		err := b.Delete(key)
 		if err != nil {
 			log.Println(err)
 			return err

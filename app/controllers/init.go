@@ -2,15 +2,12 @@ package controllers
 
 import (
 	"github.com/boltdb/bolt"
-	"github.com/lswith/graphite-monitor/frontend/app/models"
+	"github.com/lswith/graphite-monitor/app/models"
 	"github.com/revel/revel"
 )
 
 func init() {
 	revel.OnAppStart(InitDb)
-	revel.InterceptMethod((*BoltController).Begin, revel.BEFORE)
-	revel.InterceptMethod((*BoltController).Commit, revel.AFTER)
-	revel.InterceptMethod((*BoltController).Rollback, revel.FINALLY)
 }
 
 func getParamString(param string, defaultValue string) string {
@@ -49,7 +46,8 @@ var InitDb func() = func() {
 
 func initMonitor() {
 	Periodicwatchersmap = make(map[string]*models.PeriodicWatcher)
-	Db.Update(func(tx *bolt.Tx) error {
+	RunningWatchersmap = make(map[string]chan bool)
+	err := Db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(PeriodicWatcherBucket))
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
@@ -59,8 +57,16 @@ func initMonitor() {
 				return err
 			}
 			Periodicwatchersmap[string(k)] = p
-			go p.Run(Db, AlarmBucket, NotifierBucket)
+			stopchan := make(chan bool)
+			RunningWatchersmap[string(k)] = stopchan
+			err = RunWatcher(string(k))
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	})
+	if err != nil {
+		revel.ERROR.Fatal(err)
+	}
 }

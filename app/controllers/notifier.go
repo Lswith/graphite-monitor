@@ -3,7 +3,8 @@ package controllers
 import (
 	"encoding/json"
 	"errors"
-	"github.com/lswith/graphite-monitor/frontend/app/models"
+	"fmt"
+	"github.com/lswith/graphite-monitor/app/models"
 	"github.com/revel/revel"
 )
 
@@ -26,16 +27,7 @@ func (c Notifiers) Add() revel.Result {
 	if c.Validation.HasErrors() {
 		return c.RenderError(errors.New("validation error occured"))
 	}
-	b := c.Txn.Bucket([]byte(NotifierBucket))
-	key, err := c.GenerateKey()
-	if err != nil {
-		return c.RenderError(err)
-	}
-	value, err := notifier.Marshal()
-	if err != nil {
-		return c.RenderError(err)
-	}
-	err = b.Put([]byte(key), value)
+	key, err := c.AddObject(notifier, NotifierBucket)
 	if err != nil {
 		return c.RenderError(err)
 	}
@@ -44,38 +36,28 @@ func (c Notifiers) Add() revel.Result {
 
 func (c Notifiers) Map() revel.Result {
 	m := make(map[string]*models.Notifier)
-	b := c.Txn.Bucket([]byte(NotifierBucket))
-	cursor := b.Cursor()
-	for k, v := cursor.First(); k != nil; k, v = cursor.Next() {
-		notifier := new(models.Notifier)
-		err := notifier.UnMarshal(v)
-		if err != nil {
-			return c.RenderError(err)
-		}
-		m[string(k)] = notifier
-	}
+	//TODO: create map
 	return c.RenderJson(m)
 }
 
 func (c Notifiers) Get(id string) revel.Result {
 	notifier := new(models.Notifier)
-	b := c.Txn.Bucket([]byte(NotifierBucket))
-	v := b.Get([]byte(id))
-	if v == nil {
-		return c.NotFound("%s not found", id)
-	}
-	err := notifier.UnMarshal(v)
+	err := c.GetObject(id, notifier, NotifierBucket)
 	if err != nil {
-		return c.RenderError(err)
+		c.RenderError(err)
 	}
 	return c.RenderJson(notifier)
 }
 
 func (c Notifiers) Delete(id string) revel.Result {
-	b := c.Txn.Bucket([]byte(NotifierBucket))
-	err := b.Delete([]byte(id))
+	err := c.DeleteObject(id, NotifierBucket)
 	if err != nil {
 		return c.RenderError(err)
 	}
 	return c.RenderText("SUCCESS")
+}
+
+func Notify(n *models.Notifier, notification models.Notification) error {
+	fmt.Println(string(notification))
+	return nil
 }
