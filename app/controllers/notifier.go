@@ -27,7 +27,7 @@ func (c Notifiers) Add() revel.Result {
 	if c.Validation.HasErrors() {
 		return c.RenderError(errors.New("validation error occured"))
 	}
-	key, err := c.AddObject(notifier, NotifierBucket)
+	key, err := AddObject(notifier, NotifierBucket)
 	if err != nil {
 		return c.RenderError(err)
 	}
@@ -42,7 +42,7 @@ func (c Notifiers) Map() revel.Result {
 
 func (c Notifiers) Get(id string) revel.Result {
 	notifier := new(models.Notifier)
-	err := c.GetObject(id, notifier, NotifierBucket)
+	err := GetObject(id, notifier, NotifierBucket)
 	if err != nil {
 		c.RenderError(err)
 	}
@@ -50,7 +50,7 @@ func (c Notifiers) Get(id string) revel.Result {
 }
 
 func (c Notifiers) Delete(id string) revel.Result {
-	err := c.DeleteObject(id, NotifierBucket)
+	err := DeleteObject(id, NotifierBucket)
 	if err != nil {
 		return c.RenderError(err)
 	}

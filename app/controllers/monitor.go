@@ -17,7 +17,7 @@ var (
 )
 
 type Monitor struct {
-	BoltController
+	*revel.Controller
 }
 
 func (c Monitor) parsePeriodicWatcher() (*models.PeriodicWatcher, error) {
@@ -35,7 +35,7 @@ func (c Monitor) AddPeriodicWatcher() revel.Result {
 	if c.Validation.HasErrors() {
 		return c.RenderError(errors.New("validation error occured"))
 	}
-	key, err := c.AddObject(periodicwatcher, PeriodicWatcherBucket)
+	key, err := AddObject(periodicwatcher, PeriodicWatcherBucket)
 	if err != nil {
 		return c.RenderError(err)
 	}
@@ -62,7 +62,7 @@ func (c Monitor) DeletePeriodicWatcher(id string) revel.Result {
 	if _, ok := Periodicwatchersmap[id]; ok {
 		StopWatcher(id)
 		delete(Periodicwatchersmap, id)
-		err := c.DeleteObject(id, PeriodicWatcherBucket)
+		err := DeleteObject(id, PeriodicWatcherBucket)
 		if err != nil {
 			return c.RenderError(err)
 		}
@@ -140,14 +140,7 @@ func StopWatcher(id string) error {
 
 func getAlarm(alarmid string) (*models.Alarm, error) {
 	a := new(models.Alarm)
-	err := Db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(AlarmBucket))
-		v := b.Get([]byte(alarmid))
-		if v == nil {
-			return errors.New("alarm doesn't exist")
-		}
-		return a.UnMarshal(v)
-	})
+	err := GetObject(id, a, AlarmBucket)
 	if err != nil {
 		return nil, err
 	}
@@ -156,14 +149,7 @@ func getAlarm(alarmid string) (*models.Alarm, error) {
 
 func getNotifier(notifierid string) (*models.Notifier, error) {
 	n := new(models.Notifier)
-	err := Db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(NotifierBucket))
-		v := b.Get([]byte(notifierid))
-		if v == nil {
-			return errors.New("notifier doesn't exist")
-		}
-		return n.UnMarshal(v)
-	})
+	err := GetObject(id, notifier, NotifierBucket)
 	if err != nil {
 		return nil, err
 	}

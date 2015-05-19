@@ -16,11 +16,8 @@ var (
 	NotifierBucket        string
 	StatefulWatcherBucket string
 	PeriodicWatcherBucket string
+	UserBucket            string
 )
-
-type BoltController struct {
-	*revel.Controller
-}
 
 type Marshaler interface {
 	Marshal() ([]byte, error)
@@ -30,7 +27,7 @@ type UnMarshaler interface {
 	UnMarshal(m []byte) error
 }
 
-func (c *BoltController) GenerateKey() (string, error) {
+func generateKey() (string, error) {
 	uuid := make([]byte, 16)
 	n, err := io.ReadFull(rand.Reader, uuid)
 	if n != len(uuid) || err != nil {
@@ -44,8 +41,8 @@ func (c *BoltController) GenerateKey() (string, error) {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
 }
 
-func (c *BoltController) AddObject(m Marshaler, bucket string) (string, error) {
-	key, err := c.GenerateKey()
+func AddObject(m Marshaler, bucket string) (string, error) {
+	key, err := generateKey()
 	if err != nil {
 		log.Println(err)
 		return "", err
@@ -55,12 +52,12 @@ func (c *BoltController) AddObject(m Marshaler, bucket string) (string, error) {
 		log.Println(err)
 		return "", err
 	}
-	return key, Store([]byte(key), value, []byte(bucket))
+	return key, store([]byte(key), value, []byte(bucket))
 }
 
-func (c *BoltController) GetObject(key string, u UnMarshaler, bucket string) error {
+func GetObject(key string, u UnMarshaler, bucket string) error {
 	log.Printf("retrieving for key: %s\n", key)
-	value, err := Retrieve([]byte(key), []byte(bucket))
+	value, err := retrieve([]byte(key), []byte(bucket))
 	if err != nil {
 		log.Println(err)
 		return err
@@ -68,12 +65,12 @@ func (c *BoltController) GetObject(key string, u UnMarshaler, bucket string) err
 	return u.UnMarshal(value)
 }
 
-func (c *BoltController) DeleteObject(key string, bucket string) error {
-	return Delete([]byte(key), []byte(bucket))
+func DeleteObject(key string, bucket string) error {
+	return delete([]byte(key), []byte(bucket))
 }
 
-func (c *BoltController) GetKeys(bucket string) ([]string, error) {
-	m, err := RetrieveAll([]byte(bucket))
+func GetKeys(bucket string) ([]string, error) {
+	m, err := retrieveAll([]byte(bucket))
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -85,7 +82,7 @@ func (c *BoltController) GetKeys(bucket string) ([]string, error) {
 	return keys, nil
 }
 
-func Store(key []byte, value []byte, bucket []byte) error {
+func store(key []byte, value []byte, bucket []byte) error {
 	err := Db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(bucket)
 		if err != nil {
@@ -102,7 +99,7 @@ func Store(key []byte, value []byte, bucket []byte) error {
 	return err
 }
 
-func Retrieve(key []byte, bucket []byte) ([]byte, error) {
+func retrieve(key []byte, bucket []byte) ([]byte, error) {
 	var v []byte
 	err := Db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucket)
@@ -117,7 +114,7 @@ func Retrieve(key []byte, bucket []byte) ([]byte, error) {
 	return v, err
 }
 
-func RetrieveAll(bucket []byte) (map[string][]byte, error) {
+func retrieveAll(bucket []byte) (map[string][]byte, error) {
 	data := make(map[string][]byte)
 	err := Db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucket)
@@ -132,7 +129,7 @@ func RetrieveAll(bucket []byte) (map[string][]byte, error) {
 	return data, err
 }
 
-func Delete(key []byte, bucket []byte) error {
+func delete(key []byte, bucket []byte) error {
 	err := Db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucket)
 		err := b.Delete(key)

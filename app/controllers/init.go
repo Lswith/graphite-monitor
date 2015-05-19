@@ -4,10 +4,14 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/lswith/graphite-monitor/app/models"
 	"github.com/revel/revel"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func init() {
 	revel.OnAppStart(InitDb)
+	revel.InterceptFunc(Auth, revel.BEFORE, &Alarms{})
+	revel.InterceptFunc(Auth, revel.BEFORE, &Notifiers{})
+	revel.InterceptFunc(Auth, revel.BEFORE, &Watchers{})
 }
 
 func getParamString(param string, defaultValue string) string {
@@ -24,6 +28,8 @@ func getParamString(param string, defaultValue string) string {
 
 var InitDb func() = func() {
 	filename := getParamString("db.filename", "graphite-monitor.db")
+	defaultusername := getParamString("user.username", "root")
+	defaultpassword := getParamString("user.password", "root")
 	if db, err := bolt.Open(filename, 0600, nil); err != nil {
 		revel.ERROR.Fatal(err)
 	} else {
@@ -34,13 +40,44 @@ var InitDb func() = func() {
 	NotifierBucket = "notifiers"
 	PeriodicWatcherBucket = "periodic"
 	StatefulWatcherBucket = "stateful"
-	Db.Update(func(tx *bolt.Tx) error {
-		tx.CreateBucketIfNotExists([]byte(AlarmBucket))
-		tx.CreateBucketIfNotExists([]byte(NotifierBucket))
-		tx.CreateBucketIfNotExists([]byte(PeriodicWatcherBucket))
-		tx.CreateBucketIfNotExists([]byte(StatefulWatcherBucket))
+	UserBucket = "users"
+	err := Db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte(AlarmBucket))
+		if err != nil {
+			return err
+		}
+		_, err = tx.CreateBucketIfNotExists([]byte(NotifierBucket))
+		if err != nil {
+			return err
+		}
+		_, err = tx.CreateBucketIfNotExists([]byte(PeriodicWatcherBucket))
+		if err != nil {
+			return err
+		}
+		_, err = tx.CreateBucketIfNotExists([]byte(StatefulWatcherBucket))
+		if err != nil {
+			return err
+		}
+		b, err := tx.CreateBucket([]byte(UserBucket))
+		if err != nil {
+			if err != bolt.ErrBucketExists {
+				return err
+			}
+			return nil
+		}
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultpassword), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+		err = b.Put([]byte(defaultusername), hashedPassword)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
+	if err != nil {
+		revel.ERROR.Fatal(err)
+	}
 	initMonitor()
 }
 

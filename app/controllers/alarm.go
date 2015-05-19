@@ -12,7 +12,7 @@ import (
 )
 
 type Alarms struct {
-	BoltController
+	*revel.Controller
 }
 
 type AlarmState map[models.Target]models.State
@@ -32,7 +32,7 @@ func (c Alarms) Add() revel.Result {
 	if c.Validation.HasErrors() {
 		return c.RenderError(errors.New("validation error occured"))
 	}
-	key, err := c.AddObject(alarm, AlarmBucket)
+	key, err := AddObject(alarm, AlarmBucket)
 	if err != nil {
 		return c.RenderError(err)
 	}
@@ -47,7 +47,7 @@ func (c Alarms) Map() revel.Result {
 
 func (c Alarms) Get(id string) revel.Result {
 	alarm := new(models.Alarm)
-	err := c.GetObject(id, alarm, AlarmBucket)
+	err := GetObject(id, alarm, AlarmBucket)
 	if err != nil {
 		return c.RenderError(err)
 	}
@@ -55,7 +55,7 @@ func (c Alarms) Get(id string) revel.Result {
 }
 
 func (c Alarms) Delete(id string) revel.Result {
-	err := c.DeleteObject(id, AlarmBucket)
+	err := DeleteObject(id, AlarmBucket)
 	if err != nil {
 		return c.RenderError(err)
 	}
