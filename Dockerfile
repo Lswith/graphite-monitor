@@ -5,7 +5,7 @@ MAINTAINER luke swithenbank swithenbank.luke@gmail.com
 RUN go get github.com/revel/revel
 RUN go get github.com/revel/cmd/revel
 COPY . /src/github.com/lswith/graphite-monitor
-MKDIR /db
+RUN mkdir /db
 
 WORKDIR /db
 
