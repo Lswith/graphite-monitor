@@ -3,7 +3,7 @@ MAINTAINER luke swithenbank swithenbank.luke@gmail.com
 
 #Installing graphite-monitor
 RUN go get github.com/revel/revel
-RUN go install github.com/revel/cmd/revel
+RUN go get github.com/revel/cmd/revel
 COPY . /src/github.com/lswith/graphite-monitor
 MKDIR /db
 
