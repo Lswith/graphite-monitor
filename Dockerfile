@@ -6,7 +6,7 @@ RUN go get github.com/revel/revel
 RUN go get github.com/revel/cmd/revel
 COPY . $GOPATH/src/github.com/lswith/graphite-monitor
 RUN mkdir /db
-
+RUN revel build github.com/lswith/graphite-monitor
 WORKDIR /db
 
 ENTRYPOINT ["revel" ,"run", "github.com/lswith/graphite-monitor","prod"]
