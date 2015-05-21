@@ -9,7 +9,7 @@ import (
 )
 
 type Notifiers struct {
-	BoltController
+	*revel.Controller
 }
 
 func (c Notifiers) parseNotifier() (*models.Notifier, error) {
@@ -18,7 +18,7 @@ func (c Notifiers) parseNotifier() (*models.Notifier, error) {
 	return notifier, err
 }
 
-func (c Notifiers) Add() revel.Result {
+func (c Notifiers) CreateNotifier() revel.Result {
 	notifier, err := c.parseNotifier()
 	if err != nil {
 		return c.RenderError(err)
@@ -34,13 +34,24 @@ func (c Notifiers) Add() revel.Result {
 	return c.RenderText(key)
 }
 
-func (c Notifiers) Map() revel.Result {
+func (c Notifiers) ReadNotifiers() revel.Result {
 	m := make(map[string]*models.Notifier)
-	//TODO: create map
+	ids, err := GetKeys(NotifierBucket)
+	if err != nil {
+		return c.RenderError(err)
+	}
+	for _, id := range ids {
+		notifier := new(models.Notifier)
+		err = GetObject(id, notifier, NotifierBucket)
+		if err != nil {
+			return c.RenderError(err)
+		}
+		m[id] = notifier
+	}
 	return c.RenderJson(m)
 }
 
-func (c Notifiers) Get(id string) revel.Result {
+func (c Notifiers) ReadNotifier(id string) revel.Result {
 	notifier := new(models.Notifier)
 	err := GetObject(id, notifier, NotifierBucket)
 	if err != nil {
@@ -49,7 +60,7 @@ func (c Notifiers) Get(id string) revel.Result {
 	return c.RenderJson(notifier)
 }
 
-func (c Notifiers) Delete(id string) revel.Result {
+func (c Notifiers) DeleteNotifier(id string) revel.Result {
 	err := DeleteObject(id, NotifierBucket)
 	if err != nil {
 		return c.RenderError(err)

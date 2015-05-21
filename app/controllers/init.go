@@ -4,14 +4,14 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/lswith/graphite-monitor/app/models"
 	"github.com/revel/revel"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func init() {
 	revel.OnAppStart(InitDb)
 	revel.InterceptFunc(Auth, revel.BEFORE, &Alarms{})
 	revel.InterceptFunc(Auth, revel.BEFORE, &Notifiers{})
-	revel.InterceptFunc(Auth, revel.BEFORE, &Watchers{})
+	revel.InterceptFunc(Auth, revel.BEFORE, &Monitor{})
+	revel.InterceptFunc(Auth, revel.BEFORE, &Users{})
 }
 
 func getParamString(param string, defaultValue string) string {
@@ -41,6 +41,7 @@ var InitDb func() = func() {
 	PeriodicWatcherBucket = "periodic"
 	StatefulWatcherBucket = "stateful"
 	UserBucket = "users"
+	PasswordBucket = "passwords"
 	err := Db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists([]byte(AlarmBucket))
 		if err != nil {
@@ -58,31 +59,44 @@ var InitDb func() = func() {
 		if err != nil {
 			return err
 		}
-		b, err := tx.CreateBucket([]byte(UserBucket))
-		if err != nil {
-			if err != bolt.ErrBucketExists {
-				return err
-			}
-			return nil
-		}
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultpassword), bcrypt.DefaultCost)
+		_, err = tx.CreateBucketIfNotExists([]byte(UserBucket))
 		if err != nil {
 			return err
 		}
-		err = b.Put([]byte(defaultusername), hashedPassword)
+		_, err = tx.CreateBucketIfNotExists([]byte(PasswordBucket))
 		if err != nil {
 			return err
 		}
 		return nil
 	})
+	user := new(models.User)
+	user.Username = defaultusername
+	_, err = GetUser(defaultusername)
 	if err != nil {
-		revel.ERROR.Fatal(err)
+		if err != NoUser {
+			revel.ERROR.Fatal(err)
+		}
+	}
+	if err == NoUser {
+		id, err := AddObject(user, UserBucket)
+		if err != nil {
+			revel.ERROR.Fatal(err)
+		}
+		hashed, err := HashPassword(defaultpassword)
+		if err != nil {
+			revel.ERROR.Fatal(err)
+		}
+		err = AddPassword(hashed, id)
+		if err != nil {
+			revel.ERROR.Fatal(err)
+		}
 	}
 	initMonitor()
 }
 
 func initMonitor() {
 	Periodicwatchersmap = make(map[string]*models.PeriodicWatcher)
+	Statefulwatchersmap = make(map[string]*models.StatefulWatcher)
 	RunningWatchersmap = make(map[string]chan bool)
 	err := Db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(PeriodicWatcherBucket))
@@ -96,7 +110,29 @@ func initMonitor() {
 			Periodicwatchersmap[string(k)] = p
 			stopchan := make(chan bool)
 			RunningWatchersmap[string(k)] = stopchan
-			err = RunWatcher(string(k))
+			err = RunPeriodicWatcher(string(k))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		revel.ERROR.Fatal(err)
+	}
+	err = Db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(StatefulWatcherBucket))
+		c := b.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			p := new(models.StatefulWatcher)
+			err := p.UnMarshal(v)
+			if err != nil {
+				return err
+			}
+			Statefulwatchersmap[string(k)] = p
+			stopchan := make(chan bool)
+			RunningWatchersmap[string(k)] = stopchan
+			err = RunStatefulWatcher(string(k))
 			if err != nil {
 				return err
 			}

@@ -5,21 +5,31 @@
 module:testrunner
 
 GET     /                                       App.Index
-POST	/alarms 								Alarms.Add
-GET		/alarms 								Alarms.Map
-GET		/alarms/:id 							Alarms.Get
-DELETE	/alarms/:id 							Alarms.Delete
+POST	/alarms 								Alarms.CreateAlarm
+GET		/alarms 								Alarms.ReadAlarms
+GET		/alarms/:id 							Alarms.ReadAlarm
+DELETE	/alarms/:id 							Alarms.DeleteAlarm
 
-POST	/notifiers 								Notifiers.Add
-GET		/notifiers 								Notifiers.Map
-GET		/notifiers/:id 							Notifiers.Get
-DELETE	/notifiers/:id 							Notifiers.Delete
+POST	/notifiers 								Notifiers.CreateNotifier
+GET		/notifiers 								Notifiers.ReadNotifiers
+GET		/notifiers/:id 							Notifiers.ReadNotifier
+DELETE	/notifiers/:id 							Notifiers.DeleteNotifier
 
-POST	/periodicwatchers 								Monitor.AddPeriodicWatcher
-GET		/periodicwatchers 								Monitor.MapPeriodicWatchers
-GET		/periodicwatchers/:id 							Monitor.GetPeriodicWatcher
-DELETE	/periodicwatchers/:id 							Monitor.DeletePeriodicWatcher
+POST	/periodicwatchers 						Monitor.CreatePeriodicWatcher
+GET		/periodicwatchers 						Monitor.ReadPeriodicWatchers
+GET		/periodicwatchers/:id 					Monitor.ReadPeriodicWatcher
+DELETE	/periodicwatchers/:id 					Monitor.DeletePeriodicWatcher
 
+POST	/statefulwatchers 						Monitor.CreateStatefulWatcher
+GET		/statefulwatchers 						Monitor.ReadStatefulWatchers
+GET		/statefulwatchers/:id 					Monitor.ReadStatefulWatcher
+DELETE	/statefulwatchers/:id 					Monitor.DeleteStatefulWatcher
+
+POST	/users 									Users.CreateUser
+GET		/users 									Users.ReadUsers
+GET		/users/:id 								Users.ReadUser
+DELETE 	/users/:id 								Users.DeleteUser
+POST	/users/:id/password						Users.UpdatePassword
 
 # Ignore favicon requests
 GET     /favicon.ico                            404

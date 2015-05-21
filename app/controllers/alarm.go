@@ -23,7 +23,7 @@ func (c Alarms) parseAlarm() (*models.Alarm, error) {
 	return alarm, err
 }
 
-func (c Alarms) Add() revel.Result {
+func (c Alarms) CreateAlarm() revel.Result {
 	alarm, err := c.parseAlarm()
 	if err != nil {
 		return c.RenderError(err)
@@ -39,13 +39,24 @@ func (c Alarms) Add() revel.Result {
 	return c.RenderText(key)
 }
 
-func (c Alarms) Map() revel.Result {
+func (c Alarms) ReadAlarms() revel.Result {
 	m := make(map[string]*models.Alarm)
-	//TODO: make map
+	ids, err := GetKeys(AlarmBucket)
+	if err != nil {
+		return c.RenderError(err)
+	}
+	for _, id := range ids {
+		alarm := new(models.Alarm)
+		err = GetObject(id, alarm, AlarmBucket)
+		if err != nil {
+			return c.RenderError(err)
+		}
+		m[id] = alarm
+	}
 	return c.RenderJson(m)
 }
 
-func (c Alarms) Get(id string) revel.Result {
+func (c Alarms) ReadAlarm(id string) revel.Result {
 	alarm := new(models.Alarm)
 	err := GetObject(id, alarm, AlarmBucket)
 	if err != nil {
@@ -54,12 +65,25 @@ func (c Alarms) Get(id string) revel.Result {
 	return c.RenderJson(alarm)
 }
 
-func (c Alarms) Delete(id string) revel.Result {
+func (c Alarms) DeleteAlarm(id string) revel.Result {
 	err := DeleteObject(id, AlarmBucket)
 	if err != nil {
 		return c.RenderError(err)
 	}
 	return c.RenderText("SUCCESS")
+}
+
+func (c Alarms) ReadState(id string) revel.Result {
+	alarm := new(models.Alarm)
+	err := GetObject(id, alarm, AlarmBucket)
+	if err != nil {
+		return c.RenderError(err)
+	}
+	state, err := GetState(alarm)
+	if err != nil {
+		return c.RenderError(err)
+	}
+	return c.RenderJson(state)
 }
 
 func GetState(a *models.Alarm) (AlarmState, error) {

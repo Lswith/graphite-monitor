@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/boltdb/bolt"
-	"github.com/revel/revel"
+	"golang.org/x/crypto/bcrypt"
 	"io"
 	"log"
 )
@@ -17,6 +17,7 @@ var (
 	StatefulWatcherBucket string
 	PeriodicWatcherBucket string
 	UserBucket            string
+	PasswordBucket        string
 )
 
 type Marshaler interface {
@@ -39,6 +40,26 @@ func generateKey() (string, error) {
 	// version 4 (pseudo-random); see section 4.1.3
 	uuid[6] = uuid[6]&^0xf0 | 0x40
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
+}
+
+func HashPassword(password string) ([]byte, error) {
+	return bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+}
+
+func AddPassword(hashedpassword []byte, id string) error {
+	return store([]byte(id), hashedpassword, []byte(PasswordBucket))
+}
+
+func CheckPassword(password string, id string) error {
+	hashedpassword, err := retrieve([]byte(id), []byte(PasswordBucket))
+	if err != nil {
+		return err
+	}
+	return bcrypt.CompareHashAndPassword(hashedpassword, []byte(password))
+}
+
+func DeletePassword(id string) error {
+	return deletefrombolt([]byte(id), []byte(PasswordBucket))
 }
 
 func AddObject(m Marshaler, bucket string) (string, error) {
@@ -66,7 +87,7 @@ func GetObject(key string, u UnMarshaler, bucket string) error {
 }
 
 func DeleteObject(key string, bucket string) error {
-	return delete([]byte(key), []byte(bucket))
+	return deletefrombolt([]byte(key), []byte(bucket))
 }
 
 func GetKeys(bucket string) ([]string, error) {
@@ -129,7 +150,7 @@ func retrieveAll(bucket []byte) (map[string][]byte, error) {
 	return data, err
 }
 
-func delete(key []byte, bucket []byte) error {
+func deletefrombolt(key []byte, bucket []byte) error {
 	err := Db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucket)
 		err := b.Delete(key)
