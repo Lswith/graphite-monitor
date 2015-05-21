@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 type Alarms struct {
@@ -83,34 +84,48 @@ func (c Alarms) ReadState(id string) revel.Result {
 	if err != nil {
 		return c.RenderError(err)
 	}
-	return c.RenderJson(state)
+	state2 := make(map[models.Target]string)
+	for k, v := range state {
+		state2[k] = v.String()
+	}
+	return c.RenderJson(state2)
 }
 
 func GetState(a *models.Alarm) (AlarmState, error) {
 	state := make(map[models.Target]models.State)
 	for _, v := range a.Targets {
+		revel.INFO.Printf("getting state for target: %s\n", v)
 		targetstate, err := updateFromGraphite(a, v)
 		if err != nil {
+			revel.ERROR.Println(err)
 			return state, err
 		}
 		state[v] = targetstate
 	}
+	revel.INFO.Printf("finished getting state\n")
 	return state, nil
 }
 
-func updateFromGraphite(config *models.Alarm, target models.Target) (models.State, error) {
+func GetUrlValues(a *models.Alarm, target string) url.Values {
 	values := url.Values{}
-	values.Set("target", string(target))
-	if config.From != "" {
-		values.Add("from", config.From)
+	values.Set("target", target)
+	if a.From != "" {
+		values.Add("from", a.From)
 	}
-	if config.Until != "" {
-		values.Add("until", config.Until)
-	}
+	now := time.Now().UTC()
+	untilstring := fmt.Sprintf("%.2d:%.2d_%d%.2d%.2d", now.Hour(), now.Minute(), now.Year(), now.Month(), now.Day())
+	values.Add("until", untilstring)
+	return values
+
+}
+
+func updateFromGraphite(config *models.Alarm, target models.Target) (models.State, error) {
+	values := GetUrlValues(config, string(target))
 	values.Add("format", "json")
 	apiurl := config.Endpoint + "/render?" + values.Encode()
 	resp, err := http.Get(apiurl)
 	if err != nil {
+		revel.ERROR.Println(err)
 		return models.NaN, err
 	}
 	defer resp.Body.Close()
@@ -121,6 +136,7 @@ func updateFromGraphite(config *models.Alarm, target models.Target) (models.Stat
 			break
 		}
 		if err != nil {
+			revel.ERROR.Println(err)
 			return models.NaN, err
 		}
 	}

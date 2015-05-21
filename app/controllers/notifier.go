@@ -3,9 +3,10 @@ package controllers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/lswith/graphite-monitor/app/models"
 	"github.com/revel/revel"
+	"github.com/scorredoira/email"
+	"net/smtp"
 )
 
 type Notifiers struct {
@@ -69,6 +70,10 @@ func (c Notifiers) DeleteNotifier(id string) revel.Result {
 }
 
 func Notify(n *models.Notifier, notification models.Notification) error {
-	fmt.Println(string(notification))
-	return nil
+	revel.INFO.Printf("sent notification: %s %s\n", notification.Subject, notification.Body)
+	m := email.NewMessage(notification.Subject, notification.Body)
+	m.To = []string{n.To}
+	m.From = n.From
+	auth := smtp.PlainAuth("", n.Smtpuser, n.Smtppassword, n.Smtphost)
+	return email.Send(n.Smtphost+":"+n.Smtpport, auth, m)
 }

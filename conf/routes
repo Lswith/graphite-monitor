@@ -9,6 +9,7 @@ POST	/alarms 								Alarms.CreateAlarm
 GET		/alarms 								Alarms.ReadAlarms
 GET		/alarms/:id 							Alarms.ReadAlarm
 DELETE	/alarms/:id 							Alarms.DeleteAlarm
+GET		/alarms/:id/state 						Alarms.ReadState
 
 POST	/notifiers 								Notifiers.CreateNotifier
 GET		/notifiers 								Notifiers.ReadNotifiers

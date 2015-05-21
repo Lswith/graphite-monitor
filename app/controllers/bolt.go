@@ -77,7 +77,6 @@ func AddObject(m Marshaler, bucket string) (string, error) {
 }
 
 func GetObject(key string, u UnMarshaler, bucket string) error {
-	log.Printf("retrieving for key: %s\n", key)
 	value, err := retrieve([]byte(key), []byte(bucket))
 	if err != nil {
 		log.Println(err)

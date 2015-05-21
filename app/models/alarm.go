@@ -10,14 +10,15 @@ type Alarm struct {
 	Endpoint  string
 	Targets   []Target
 	From      string
-	Until     string
 	Threshold float64
 	Rule      string
 }
 
+var urlregex = regexp.MustCompile("^(https?://)?([\\da-z\\.-]+)\\.([a-z\\.]{2,6})([/\\w \\.-]*)*/?$")
+
 func (a *Alarm) Validate(v *revel.Validation) {
 	v.Required(a.Endpoint)
-	v.Match(a.Endpoint, regexp.MustCompile("^(https?://)?([\\da-z\\.-]+)\\.([a-z\\.]{2,6})([/\\w \\.-]*)*/?$"))
+	v.Match(a.Endpoint, urlregex)
 	v.Required(a.Targets)
 	v.Required(a.Threshold)
 	v.Required(a.Rule)
