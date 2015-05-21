@@ -1,12 +1,12 @@
-FROM golang
+FROM golang:1.3-onbuild
 MAINTAINER luke swithenbank swithenbank.luke@gmail.com 
 
 #Installing graphite-monitor
-COPY . /go/src/github.com/lswith/graphite-monitor
 RUN mkdir /db
 RUN go get github.com/revel/revel
 RUN go get github.com/revel/cmd/revel
-RUN go get -v ./...
+RUN go get -v -d -v
+RUN go install -v
 
 
 WORKDIR /db
