@@ -7,7 +7,6 @@ import (
 	"github.com/lswith/graphite-monitor/app/models"
 	"github.com/revel/revel"
 	"log"
-	"net/url"
 	"time"
 )
 
@@ -108,11 +107,14 @@ func RunPeriodicWatcher(id string) error {
 				}
 				for k, v := range state {
 					if v == p.NotifyState {
-						message := fmt.Sprintf("alarm: %s contains target: %s which is in state: %s\n", p.Alarmid, k, v)
-						message2, err := url.QueryUnescape(a.Endpoint + "/render?" + GetUrlValues(a, string(k)).Encode())
-						message += message2
+						amessage := fmt.Sprintf("alarm: %s\n", p.Alarmid)
+						tmessage := fmt.Sprintf("target: %s\n", k)
+						smessage := fmt.Sprintf("state: %s\n", v)
+						urlmessage := a.Endpoint + "/render?" + GetUrlValues(a, string(k)).Encode()
+						message := amessage + tmessage + smessage + urlmessage
 						revel.INFO.Println(message)
-						not, err := models.NewNotification(string(k), message)
+						subject := fmt.Sprintf("%s: %s", k, v)
+						not, err := models.NewNotification(subject, message)
 						if err != nil {
 							revel.ERROR.Println(err)
 							continue
@@ -229,11 +231,14 @@ func RunStatefulWatcher(id string) error {
 							continue
 						}
 					}
-					message := fmt.Sprintf("alarm: %s contains target: %s which is in state: %s\n", s.Alarmid, k, v)
-					message2, err := url.QueryUnescape(a.Endpoint + "/render?" + GetUrlValues(a, string(k)).Encode())
-					message += message2
+					amessage := fmt.Sprintf("alarm: %s\n", s.Alarmid)
+					tmessage := fmt.Sprintf("target: %s\n", k)
+					smessage := fmt.Sprintf("state: %s\n", v)
+					urlmessage := a.Endpoint + "/render?" + GetUrlValues(a, string(k)).Encode()
+					message := amessage + tmessage + smessage + urlmessage
 					revel.INFO.Println(message)
-					not, err := models.NewNotification(string(k), message)
+					subject := fmt.Sprintf("%s: %s", k, v)
+					not, err := models.NewNotification(subject, message)
 					if err != nil {
 						revel.ERROR.Println(err)
 						continue
